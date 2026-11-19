@@ -66,3 +66,18 @@ Settings → Accessories now includes ELM327 snapshot tests over Wi-Fi TCP, pair
 A separate USB test uses the documented 55 AA serial receiver heartbeat and validates eight-byte tire frames with XOR checksums at 19200 baud. It displays wheel position, decoded pressure and temperature, and receiver flags. The pressure conversion follows the SamSkjord reference profile. Compare readings against the vendor app and a gauge before enabling this profile for a new receiver. HID report formats and Deelife/MU7J variants need their own profiles and fixtures. USB chip detection alone cannot identify a tire receiver's application protocol. CI tests include valid, fragmented and corrupt serial frame fixtures.
 
 References: [55 AA serial receiver](https://github.com/SamSkjord/TPMS), [USB serial drivers](https://github.com/mik3y/usb-serial-for-android), [other TPMS protocol families](https://github.com/drrhaos/tpms).
+
+## Non-AI parity backlog
+
+This roadmap treats the requested features as requirements for OpenLauncher. Android 9/API 28 and 32-bit ARM support must be verified against the merged APK, SDK dependencies, and physical head unit.
+
+| Area | Available or in this change | Remaining |
+| --- | --- | --- |
+| Display and layout | Left/right/bottom dock, landscape layout, widget editor, day/night themes, independent launcher-window brightness, keep-screen-on, 12/24-hour clock, searchable app drawer | Multiple dashboard pages, Home button page cycling, driver profiles, independently selectable temperature and speed units, translations, draggable return overlay, OEM-supported split screen, expanded widget catalog |
+| Vehicle costs and maintenance | Local fuel and EV charging costs with monthly totals, service history, in-app service countdowns | Edit/delete, full history and export, scheduled reminders, distance-based intervals |
+| Trips and telemetry | GPS trip meter and 0–100 timer, ELM327 RPM/speed snapshots over Wi-Fi/USB/Bluetooth Classic, 55 AA serial TPMS sample | Live OBD/BLE dashboard, expanded optional PIDs, DTC read and user-confirmed parked clear, threshold alerts, gauge canvas, trip history/aggregates, validated fuel economy and eco/emissions estimates, live TPMS and additional receiver profiles |
+| Navigation | One-tap fuel, food, hotel, ATM and charging searches in an installed maps app | Embedded navigation, offline regional map downloads/search/routing, voice guidance, rerouting, 3D rendering, Google Navigation and live traffic, TomTom/Places data, speed limits and hazard data |
+| Media and utilities | MediaSession widget and existing FM integrations | Spotify library/search, track-reactive background, internet radio and favorites/history, phone keypad/contacts/favorites, lightweight browser, GPS weather refresh |
+| Camera and companion | Launch stock camera and projection apps from assigned shortcuts where exposed | Front-camera widget/PiP, verified UVC capture, recording and retention, experimental ADAS, supported ambient BLE profiles and theme sync, companion contacts/call history/battery/sharing |
+
+Prioritize offline launcher and accessory functionality on Android 9. Map and media providers need their own compatibility and credential review, especially where native libraries are involved. Measure recording, mapping and experimental ADAS under the head unit's 2 GB RAM budget before enabling them by default.

@@ -105,7 +105,12 @@ data class AppSettings(
     val gradientDirection: GradientDirection = GradientDirection.DIAGONAL,
     val useCustomBackgroundColor: Boolean = false,
     val showSystemBars: Boolean = false,
-    val startupLogo: String = "car"
+    val startupLogo: String = "car",
+    val keepScreenOn: Boolean = false,
+    val dayBrightness: Int = -1,
+    val nightBrightness: Int = -1,
+    val use24HourClock: Boolean = true,
+    val vehicleLog: List<VehicleLogEntry> = emptyList()
 )
 
 fun defaultShortcuts() = listOf(

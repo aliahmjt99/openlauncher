@@ -392,6 +392,18 @@ fun SettingsScreen(
         }
 
         // ── Appearance ───────────────────────────────────────────────────────
+        SettingsSection("Display and clock") {
+            DisplayPreferences(settings, onUpdate)
+        }
+
+        SettingsSection("Vehicle log") {
+            VehicleLogSettings(settings.vehicleLog, onUpdate)
+        }
+
+        SettingsSection("Nearby places") {
+            NearbyPlaces()
+        }
+
         SettingsSection("Startup logo") {
             StartupLogoSettings(settings.startupLogo) { logo ->
                 onUpdate { copy(startupLogo = logo) }

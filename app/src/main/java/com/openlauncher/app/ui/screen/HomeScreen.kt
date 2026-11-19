@@ -396,6 +396,7 @@ fun HomeScreen(
                     when (w.id) {
                         "CLOCK" -> ClockWidget(
                             style      = settings.clockStyle,
+                            use24HourClock = settings.use24HourClock,
                             accent     = accent,
                             isDayMode  = isDayMode,
                             modifier   = Modifier.fillMaxSize()
