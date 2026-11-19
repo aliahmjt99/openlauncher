@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -33,6 +35,17 @@ internal fun VehicleLogSettings(
     var interval by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var showHistory by remember { mutableStateOf(false) }
+    var visibleCount by remember { mutableIntStateOf(10) }
+    var editing by remember { mutableStateOf<VehicleLogEntry?>(null) }
+    var pendingDeletion by remember { mutableStateOf<VehicleLogEntry?>(null) }
+
+    fun clearForm() {
+        editing = null
+        description = ""
+        cost = ""
+        interval = ""
+        error = null
+    }
     val now = System.currentTimeMillis()
     val monthStart = Calendar.getInstance().apply {
         set(Calendar.DAY_OF_MONTH, 1)
@@ -68,6 +81,7 @@ internal fun VehicleLogSettings(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
         }
     }
+    if (editing != null) Text("Editing saved entry")
     OutlinedButton(onClick = {
         val amount = cost.trim().replace(',', '.').toBigDecimalOrNull()
         val days = interval.toIntOrNull()
@@ -81,16 +95,25 @@ internal fun VehicleLogSettings(
             else -> null
         }
         if (error == null) {
+            val original = editing
             val entry = VehicleLogEntry(
                 type, description.trim().ifBlank { type.label }, amount?.toPlainString() ?: "0",
+                createdAt = original?.createdAt ?: System.currentTimeMillis(),
                 serviceIntervalDays = days.takeIf { type == VehicleLogType.SERVICE }
             )
-            update { copy(vehicleLog = listOf(entry) + vehicleLog) }
-            description = ""
-            cost = ""
-            interval = ""
+            update {
+                val updated = if (original == null) listOf(entry) + vehicleLog else {
+                    val index = vehicleLog.indexOf(original)
+                    if (index < 0) vehicleLog else vehicleLog.toMutableList().apply { set(index, entry) }
+                }
+                copy(vehicleLog = updated)
+            }
+            clearForm()
         }
-    }) { Text("Save entry") }
+    }) { Text(if (editing == null) "Save entry" else "Save changes") }
+    if (editing != null) {
+        TextButton(onClick = { clearForm() }) { Text("Cancel edit") }
+    }
     error?.let { Text(it) }
 
     val scheduledServices = entries
@@ -114,9 +137,38 @@ internal fun VehicleLogSettings(
     }
     if (showHistory) {
         val date = DateFormat.getDateInstance(DateFormat.MEDIUM)
-        for (entry in entries.take(20)) {
+        for (entry in entries.take(visibleCount)) {
             Text("${date.format(Date(entry.createdAt))} · ${entry.type.label} · ${entry.label} · ${entry.cost}")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = {
+                    editing = entry
+                    type = entry.type
+                    description = entry.label
+                    cost = entry.cost
+                    interval = entry.serviceIntervalDays?.toString().orEmpty()
+                    error = null
+                }) { Text("Edit ${entry.label}") }
+                TextButton(onClick = { pendingDeletion = entry }) { Text("Delete") }
+            }
         }
+        if (entries.size > visibleCount) {
+            OutlinedButton(onClick = { visibleCount += 10 }) { Text("Show more entries") }
+        }
+    }
+    pendingDeletion?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingDeletion = null },
+            title = { Text("Delete ${entry.label}?") },
+            text = { Text("This removes the entry from your vehicle log.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    update { copy(vehicleLog = vehicleLog - entry) }
+                    if (editing == entry) clearForm()
+                    pendingDeletion = null
+                }) { Text("Delete entry") }
+            },
+            dismissButton = { TextButton(onClick = { pendingDeletion = null }) { Text("Cancel") } }
+        )
     }
 }
 

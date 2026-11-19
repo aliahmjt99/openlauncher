@@ -249,6 +249,9 @@ class MainActivity : ComponentActivity() {
                                             val pkg = nowPlaying?.controller?.packageName
                                             if (!pkg.isNullOrEmpty()) vm.launchApp(pkg)
                                         },
+                                        onSaveTrip           = { trip ->
+                                            vm.updateSettings { copy(tripHistory = (listOf(trip) + tripHistory).take(500)) }
+                                        },
                                         onUpdateWidget      = { id, sx, sy -> vm.updateWidgetConfig(id, sx, sy) },
                                         onMoveWidget        = { id, gx, gy -> vm.moveWidgetConfig(id, gx, gy) },
                                         onAddWidget         = { id -> vm.addWidget(id) },

@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.openlauncher.app.data.AppSettings
+import com.openlauncher.app.data.TemperatureUnit
 import kotlin.math.roundToInt
 
 @Composable
@@ -27,6 +28,18 @@ internal fun DisplayPreferences(settings: AppSettings, update: (AppSettings.() -
         for ((is24Hour, label) in listOf(true to "24-hour clock", false to "12-hour clock")) {
             FilterChip(selected = settings.use24HourClock == is24Hour,
                 onClick = { update { copy(use24HourClock = is24Hour) } },
+                label = { Text(label) })
+        }
+    }
+    Text("Weather temperature")
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for ((unit, label) in listOf(
+            TemperatureUnit.FOLLOW_DISTANCE to "Match distance units",
+            TemperatureUnit.CELSIUS to "°C",
+            TemperatureUnit.FAHRENHEIT to "°F"
+        )) {
+            FilterChip(selected = settings.temperatureUnit == unit,
+                onClick = { update { copy(temperatureUnit = unit) } },
                 label = { Text(label) })
         }
     }

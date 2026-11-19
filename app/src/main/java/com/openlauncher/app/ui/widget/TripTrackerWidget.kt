@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.openlauncher.app.data.TripEntry
 import com.openlauncher.app.util.LocationData
 import kotlinx.coroutines.delay
 
@@ -31,7 +32,8 @@ fun TripTrackerWidget(
     isMetric: Boolean,
     accent: Color,
     isDayMode: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSaveTrip: (TripEntry) -> Unit = {}
 ) {
     // Master design system colors aligned with Vitals, Compass, Clock, and Altimeter
     val displayColor = if (isDayMode) Color(0xFF111111) else androidx.compose.material3.MaterialTheme.colorScheme.onBackground
@@ -147,7 +149,9 @@ fun TripTrackerWidget(
             // Measure the real interval instead of assuming exactly 1 s per tick
             val dtSeconds = ((now - lastTickMs) / 1000.0).coerceIn(0.0, 5.0)
             lastTickMs = now
-            val currentSpeed = currentLocation?.speedMps ?: 0f
+            val fix = currentLocation ?: continue
+            if (now - fix.fixElapsedMs !in 0L..10_000L) continue
+            val currentSpeed = fix.speedMps
             if (currentSpeed > 0.5f) {
                 driveTimeSeconds++
                 totalSpeedSum += currentSpeed
@@ -172,6 +176,14 @@ fun TripTrackerWidget(
         val m = (seconds % 3600) / 60
         val s = seconds % 60
         return "%02d:%02d:%02d".format(h, m, s)
+    }
+
+    fun resetTrip() {
+        driveTimeSeconds = 0L
+        idleTimeSeconds = 0L
+        totalSpeedSum = 0.0
+        movingSecondsCount = 0L
+        tripDistanceMeters = 0.0
     }
 
     // Flat, borderless Column that lets the launcher's card boundary frame the content
@@ -543,11 +555,7 @@ fun TripTrackerWidget(
                         accelEndTime = 0L
                         bestAccelTime = null
                     } else {
-                        driveTimeSeconds = 0L
-                        idleTimeSeconds = 0L
-                        totalSpeedSum = 0.0
-                        movingSecondsCount = 0L
-                        tripDistanceMeters = 0.0
+                        resetTrip()
                     }
                 },
                 isDayMode = isDayMode
@@ -565,13 +573,20 @@ fun TripTrackerWidget(
                 isDayMode = isDayMode
             )
 
-            // Button 4: SET
             TeTactileButton(
-                label = "SET",
+                label = "SAVE",
                 keyColor = teGrey,
                 active = false,
-                enabled = false,
-                onClick = {},
+                enabled = activeMode == "TRIP" && !isRunning && driveTimeSeconds > 0,
+                onClick = {
+                    onSaveTrip(TripEntry(
+                        distanceMeters = tripDistanceMeters,
+                        movingSeconds = driveTimeSeconds,
+                        idleSeconds = idleTimeSeconds,
+                        averageMovingSpeedMps = averageSpeedMps
+                    ))
+                    resetTrip()
+                },
                 isDayMode = isDayMode
             )
         }

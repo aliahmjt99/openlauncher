@@ -400,6 +400,10 @@ fun SettingsScreen(
             VehicleLogSettings(settings.vehicleLog, onUpdate)
         }
 
+        SettingsSection("Trip history") {
+            TripHistory(settings.tripHistory, settings.unitSystem)
+        }
+
         SettingsSection("Nearby places") {
             NearbyPlaces()
         }
