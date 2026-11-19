@@ -22,7 +22,24 @@ jobs:
           packages: ''
       - run: sdkmanager "platforms;android-36.1" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - name: Build APK and run unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
+      - name: Run Android lint
+        run: |
+          if ! ./gradlew --no-daemon lintDebug; then
+            report=app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
+            if [[ -f "$report" ]]; then
+              awk '/: Error:/{print; for (i=0; i<2 && getline; i++) print}' "$report"
+            fi
+            exit 1
+          fi
+      - name: Upload lint report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-lint-report
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:
