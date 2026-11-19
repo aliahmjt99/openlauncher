@@ -46,6 +46,8 @@ class SettingsRepository(private val context: Context) {
         val SIDEBAR_POSITION           = stringPreferencesKey("sidebar_position")
         val BOTTOM_BAR_SHORTCUTS_RIGHT = booleanPreferencesKey("bottom_bar_shortcuts_right")
         val DAY_NIGHT_MODE        = stringPreferencesKey("day_night_mode")
+        val STARTUP_LOGO = stringPreferencesKey("startup_logo")
+        val SHOW_SYSTEM_BARS = booleanPreferencesKey("show_system_bars")
         val SHOW_PIP              = booleanPreferencesKey("show_pip")
         val PIP_APP_PACKAGE       = stringPreferencesKey("pip_app_package")
         val RADIO_PACKAGE         = stringPreferencesKey("radio_package")
@@ -118,6 +120,8 @@ class SettingsRepository(private val context: Context) {
                                    ?: if (prefs[Keys.RIGHT_HAND_DRIVE] == true) SidebarPosition.RIGHT else defaults.sidebarPosition,
                 bottomBarShortcutsRight = prefs[Keys.BOTTOM_BAR_SHORTCUTS_RIGHT] ?: defaults.bottomBarShortcutsRight,
                 dayNightMode     = prefs[Keys.DAY_NIGHT_MODE]?.let { runCatching { DayNightMode.valueOf(it) }.getOrNull() } ?: defaults.dayNightMode,
+                startupLogo      = prefs[Keys.STARTUP_LOGO] ?: defaults.startupLogo,
+                showSystemBars   = prefs[Keys.SHOW_SYSTEM_BARS] ?: defaults.showSystemBars,
                 showPip          = prefs[Keys.SHOW_PIP]         ?: defaults.showPip,
                 pipAppPackage    = prefs[Keys.PIP_APP_PACKAGE]  ?: defaults.pipAppPackage,
                 radioPackage     = prefs[Keys.RADIO_PACKAGE]    ?: defaults.radioPackage,
@@ -178,6 +182,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.SIDEBAR_POSITION]           = s.sidebarPosition.name
             prefs[Keys.BOTTOM_BAR_SHORTCUTS_RIGHT] = s.bottomBarShortcutsRight
             prefs[Keys.DAY_NIGHT_MODE]     = s.dayNightMode.name
+            prefs[Keys.STARTUP_LOGO] = s.startupLogo
+            prefs[Keys.SHOW_SYSTEM_BARS] = s.showSystemBars
             prefs[Keys.SHOW_PIP]           = s.showPip
             prefs[Keys.PIP_APP_PACKAGE]    = s.pipAppPackage
             prefs[Keys.RADIO_PACKAGE]      = s.radioPackage

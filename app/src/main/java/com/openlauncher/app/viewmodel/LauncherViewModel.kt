@@ -171,9 +171,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val active    = resized.filter { it.enabled && it.id in activeIds }
             val inactive  = resized.filter { !it.enabled || it.id !in activeIds }
             val target    = active.find { it.id == id }
-            copy(widgetLayout = if (target != null)
-                computeWidgetMove(active, id, target.gridX, target.gridY) + inactive
-            else resized)
+            val resolved = target?.let { computeWidgetMove(active, id, it.gridX, it.gridY) }
+            when {
+                target == null -> copy(widgetLayout = resized)
+                resolved == null -> this
+                else -> copy(widgetLayout = resolved + inactive)
+            }
         }
     }
 
@@ -182,7 +185,8 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
             val activeIds = activeWidgetIds()
             val active   = widgetLayout.filter { it.enabled && it.id in activeIds }
             val inactive = widgetLayout.filter { !it.enabled || it.id !in activeIds }
-            copy(widgetLayout = computeWidgetMove(active, id, gridX, gridY) + inactive)
+            val resolved = computeWidgetMove(active, id, gridX, gridY) ?: return@updateSettings this
+            copy(widgetLayout = resolved + inactive)
         }
     }
 
@@ -342,13 +346,29 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         val intent = pm.getLaunchIntentForPackage(packageName)
             ?: pm.queryIntentActivities(
                 Intent(Intent.ACTION_MAIN).setPackage(packageName), 0
-            ).firstOrNull()?.activityInfo?.let { ai ->
+            ).firstOrNull {
+                val activity = it.activityInfo
+                activity.exported && activity.enabled &&
+                    (activity.permission == null ||
+                        pm.checkPermission(activity.permission, app.packageName) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED)
+            }?.activityInfo?.let { ai ->
                 Intent(Intent.ACTION_MAIN).apply {
                     setClassName(ai.packageName, ai.name)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
             }
-        intent?.let { app.startActivity(it) }
+        if (intent != null) {
+            try {
+                app.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (_: android.content.ActivityNotFoundException) {
+                // The package can disappear after the library is loaded.
+            } catch (_: SecurityException) {
+                // Some vendor activities are restricted to system apps.
+            }
+        }
+        android.widget.Toast.makeText(app, "This app cannot be opened", android.widget.Toast.LENGTH_SHORT).show()
     }
 
     // ── Now Playing ───────────────────────────────────────────────────────────

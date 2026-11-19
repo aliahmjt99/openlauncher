@@ -103,7 +103,9 @@ data class AppSettings(
     val vitalsAsBars: Boolean = false,
     val speedometerDigitalOnly: Boolean = false,
     val gradientDirection: GradientDirection = GradientDirection.DIAGONAL,
-    val useCustomBackgroundColor: Boolean = false
+    val useCustomBackgroundColor: Boolean = false,
+    val showSystemBars: Boolean = false,
+    val startupLogo: String = "car"
 )
 
 fun defaultShortcuts() = listOf(
@@ -135,6 +137,7 @@ fun AppSettings.activeWidgetIds(): Set<String> = buildSet {
 /**
  * Moves [movingId] to ([targetX], [targetY]) and pushes any displaced widgets to the
  * first available free cell, cascading until all conflicts are resolved.
+ * Returns null if a displaced widget cannot fit.
  * Operates only on the supplied [layout] list — callers should pass only active/enabled widgets.
  */
 fun computeWidgetMove(
@@ -142,8 +145,8 @@ fun computeWidgetMove(
     movingId: String,
     targetX: Int,
     targetY: Int
-): List<WidgetConfig> {
-    val moving = layout.find { it.id == movingId } ?: return layout
+): List<WidgetConfig>? {
+    val moving = layout.find { it.id == movingId } ?: return null
     val placed = moving.copy(
         gridX = targetX.coerceIn(0, GRID_COLS - moving.spanX),
         gridY = targetY.coerceIn(0, GRID_ROWS - moving.spanY)
@@ -162,8 +165,8 @@ fun computeWidgetMove(
     }
 
     for (w in displaced) {
-        val pos = firstFreeGridPos(w.spanX, w.spanY, occupied)
-        val resolved = if (pos != null) w.copy(gridX = pos.first, gridY = pos.second) else w
+        val pos = firstFreeGridPos(w.spanX, w.spanY, occupied) ?: return null
+        val resolved = w.copy(gridX = pos.first, gridY = pos.second)
         result.add(resolved)
         for (dx in 0 until resolved.spanX) for (dy in 0 until resolved.spanY) occupied.add(resolved.gridX + dx to resolved.gridY + dy)
     }

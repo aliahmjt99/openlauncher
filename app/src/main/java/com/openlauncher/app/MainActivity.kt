@@ -25,6 +25,8 @@ import com.openlauncher.app.data.SidebarPosition
 import com.openlauncher.app.data.GradientDirection
 import com.openlauncher.app.model.NavDestination
 import com.openlauncher.app.ui.components.Sidebar
+import com.openlauncher.app.ui.components.StartupLogo
+import kotlinx.coroutines.delay
 import com.openlauncher.app.ui.screen.*
 import com.openlauncher.app.ui.theme.OpenLauncherTheme
 import com.openlauncher.app.viewmodel.LauncherViewModel
@@ -42,26 +44,40 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun hideSystemBars() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+    private fun applySystemBars(visible: Boolean) {
         WindowCompat.getInsetsController(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            if (visible) {
+                show(WindowInsetsCompat.Type.systemBars())
+            } else {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemBars()
+        if (hasFocus) applySystemBars(vm.settings.value.showSystemBars)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        hideSystemBars()
+        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
             val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
             val settings       by vm.settings.collectAsStateWithLifecycle()
+            LaunchedEffect(settingsLoaded, settings.showSystemBars) {
+                if (settingsLoaded) applySystemBars(settings.showSystemBars)
+            }
+            var startupFinished by remember { mutableStateOf(savedInstanceState != null) }
+            LaunchedEffect(settingsLoaded) {
+                if (settingsLoaded && !startupFinished) {
+                    if (settings.startupLogo != "none") delay(650)
+                    startupFinished = true
+                }
+            }
             val nav            by vm.nav.collectAsStateWithLifecycle()
             val apps        by vm.apps.collectAsStateWithLifecycle()
             val appsLoading by vm.appsLoading.collectAsStateWithLifecycle()
@@ -103,8 +119,17 @@ class MainActivity : ComponentActivity() {
                     fontScale = baseDensity.fontScale
                 )
             ) {
-                if (!settingsLoaded) {
-                    Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                Box(
+                    Modifier.fillMaxSize().then(
+                        if (settings.showSystemBars) Modifier.windowInsetsPadding(WindowInsets.systemBars)
+                        else Modifier
+                    )
+                ) {
+                if (!settingsLoaded || !startupFinished) {
+                    StartupLogo(
+                        logo = if (settingsLoaded) settings.startupLogo else "none",
+                        modifier = Modifier.fillMaxSize()
+                    )
                 } else OpenLauncherTheme(
                     accent     = accent,
                     background = bg,
@@ -288,6 +313,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+                } // System bar insets
             } // CompositionLocalProvider
         }
     }
