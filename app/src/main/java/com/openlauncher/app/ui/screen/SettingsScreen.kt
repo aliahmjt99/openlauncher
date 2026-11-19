@@ -315,6 +315,18 @@ fun SettingsScreen(
 
             SettingsDivider()
 
+            SettingsRow(
+                label = "Show Android system bars",
+                sublabel = "Keep the head unit's system navigation and status controls visible",
+                icon = Icons.Default.Settings
+            ) {
+                Switch(
+                    checked = settings.showSystemBars,
+                    onCheckedChange = { visible -> onUpdate { copy(showSystemBars = visible) } },
+                    colors = switchColors(accent)
+                )
+            }
+            SettingsDivider()
             SettingsRow(label = "Unit System", sublabel = if (settings.unitSystem == UnitSystem.METRIC) "Metric (°C, km)" else "Imperial (°F, mi)", icon = Icons.Default.Straighten) {
                 Row {
                     FilterChip(
@@ -380,6 +392,16 @@ fun SettingsScreen(
         }
 
         // ── Appearance ───────────────────────────────────────────────────────
+        SettingsSection("Startup logo") {
+            StartupLogoSettings(settings.startupLogo) { logo ->
+                onUpdate { copy(startupLogo = logo) }
+            }
+        }
+
+        SettingsSection("Accessories") {
+            AccessoryDiagnostics()
+        }
+
         SettingsSection("Appearance") {
             // Display Mode
             SettingsRow(

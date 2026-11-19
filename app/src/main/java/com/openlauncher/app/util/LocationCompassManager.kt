@@ -126,7 +126,11 @@ class LocationCompassManager(context: Context) {
                     locationListener.onLocationChanged(it)
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: SecurityException) {
+            // Location access can be denied or revoked while the launcher is running.
+        } catch (_: IllegalArgumentException) {
+            // The provider may be removed between discovery and registration.
+        }
 
         // Network Provider (Works online, cell/wifi-based)
         try {
@@ -138,7 +142,11 @@ class LocationCompassManager(context: Context) {
                     locationListener.onLocationChanged(it)
                 }
             }
-        } catch (_: Exception) {}
+        } catch (_: SecurityException) {
+            // Location access can be denied or revoked while the launcher is running.
+        } catch (_: IllegalArgumentException) {
+            // The provider may be removed between discovery and registration.
+        }
     }
 
     fun stop() {

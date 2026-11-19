@@ -78,5 +78,8 @@ dependencies {
     // JSON serialization
     implementation("com.google.code.gson:gson:2.13.1")
 
+    implementation("com.github.mik3y:usb-serial-for-android:3.9.0")
+
+    testImplementation("junit:junit:4.13.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
