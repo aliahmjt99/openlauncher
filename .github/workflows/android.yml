@@ -22,11 +22,9 @@ jobs:
           packages: ''
       - run: sdkmanager "platforms;android-36.1" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build APK and run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
-      - name: Run Android lint
+      - name: Build APK, run unit tests, and lint
         run: |
-          if ! ./gradlew --no-daemon lintDebug; then
+          if ! ./gradlew --no-daemon testDebugUnitTest assembleDebug lintDebug; then
             report=app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
             if [[ -f "$report" ]]; then
               awk '/: Error:/{print; for (i=0; i<2 && getline; i++) print}' "$report"
