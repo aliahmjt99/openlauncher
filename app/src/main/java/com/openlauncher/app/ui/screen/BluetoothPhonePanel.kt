@@ -2,6 +2,7 @@ package com.openlauncher.app.ui.screen
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.ActivityNotFoundException
@@ -50,8 +51,8 @@ private fun readBluetoothStatus(context: Context): BluetoothStatus {
         val paired = adapter.bondedDevices.map { it.name?.takeIf(String::isNotBlank) ?: it.address }.sorted()
         BluetoothStatus(
             "Android Bluetooth is on.", paired,
-            adapter.getProfileConnectionState(BluetoothProfile.HEADSET) == BluetoothProfile.STATE_CONNECTED,
-            adapter.getProfileConnectionState(BluetoothProfile.A2DP) == BluetoothProfile.STATE_CONNECTED
+            adapter.getProfileConnectionState(BluetoothProfile.HEADSET) == BluetoothAdapter.STATE_CONNECTED,
+            adapter.getProfileConnectionState(BluetoothProfile.A2DP) == BluetoothAdapter.STATE_CONNECTED
         )
     } catch (_: SecurityException) {
         BluetoothStatus("Bluetooth access is unavailable. Check Android permissions.")
