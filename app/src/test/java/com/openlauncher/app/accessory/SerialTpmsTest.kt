@@ -47,8 +47,8 @@ class SerialTpmsTest {
             // Change the partial packet's wheel so its checksum cannot validate
             // when the next frame's bytes fill the remaining positions.
             val truncated = valid.copyOf(length).apply { if (length > 3) this[3] = 1 }
-            val output = (truncated + valid).mapNotNull { decoder.accept(it) }
-            assertEquals(listOf(Wheel.REAR_LEFT), output.map { it.wheel })
+            val output = (truncated + valid).asSequence().mapNotNull { decoder.accept(it) }
+            assertEquals(listOf(Wheel.REAR_LEFT), output.map { it.wheel }.toList())
         }
     }
 }
