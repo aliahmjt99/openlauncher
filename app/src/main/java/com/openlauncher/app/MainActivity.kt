@@ -94,6 +94,17 @@ class MainActivity : ComponentActivity() {
             val pickerSlot      by vm.shortcutPickerSlot.collectAsStateWithLifecycle()
             val appPickerTarget by vm.appPickerTarget.collectAsStateWithLifecycle()
 
+            val brightness = if (isDayMode) settings.dayBrightness else settings.nightBrightness
+            LaunchedEffect(settingsLoaded, settings.keepScreenOn, brightness) {
+                if (settingsLoaded) {
+                    val keepOnFlag = android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                    if (settings.keepScreenOn) window.addFlags(keepOnFlag) else window.clearFlags(keepOnFlag)
+                    val attributes = window.attributes
+                    attributes.screenBrightness = if (brightness < 0) -1f else brightness / 100f
+                    window.attributes = attributes
+                }
+            }
+
             val accent         = Color(settings.accentColor)
             val bg             = if (settings.useCustomBackgroundColor) {
                 Color(settings.backgroundColor)
@@ -237,6 +248,9 @@ class MainActivity : ComponentActivity() {
                                         onTapNowPlaying     = {
                                             val pkg = nowPlaying?.controller?.packageName
                                             if (!pkg.isNullOrEmpty()) vm.launchApp(pkg)
+                                        },
+                                        onSaveTrip           = { trip ->
+                                            vm.updateSettings { copy(tripHistory = (listOf(trip) + tripHistory).take(500)) }
                                         },
                                         onUpdateWidget      = { id, sx, sy -> vm.updateWidgetConfig(id, sx, sy) },
                                         onMoveWidget        = { id, gx, gy -> vm.moveWidgetConfig(id, gx, gy) },

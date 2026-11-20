@@ -46,6 +46,13 @@ class SettingsRepository(private val context: Context) {
         val SIDEBAR_POSITION           = stringPreferencesKey("sidebar_position")
         val BOTTOM_BAR_SHORTCUTS_RIGHT = booleanPreferencesKey("bottom_bar_shortcuts_right")
         val DAY_NIGHT_MODE        = stringPreferencesKey("day_night_mode")
+        val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val DAY_BRIGHTNESS = intPreferencesKey("day_brightness")
+        val NIGHT_BRIGHTNESS = intPreferencesKey("night_brightness")
+        val USE_24_HOUR_CLOCK = booleanPreferencesKey("use_24_hour_clock")
+        val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
+        val TRIP_HISTORY = stringPreferencesKey("trip_history")
+        val VEHICLE_LOG = stringPreferencesKey("vehicle_log")
         val STARTUP_LOGO = stringPreferencesKey("startup_logo")
         val SHOW_SYSTEM_BARS = booleanPreferencesKey("show_system_bars")
         val SHOW_PIP              = booleanPreferencesKey("show_pip")
@@ -120,6 +127,23 @@ class SettingsRepository(private val context: Context) {
                                    ?: if (prefs[Keys.RIGHT_HAND_DRIVE] == true) SidebarPosition.RIGHT else defaults.sidebarPosition,
                 bottomBarShortcutsRight = prefs[Keys.BOTTOM_BAR_SHORTCUTS_RIGHT] ?: defaults.bottomBarShortcutsRight,
                 dayNightMode     = prefs[Keys.DAY_NIGHT_MODE]?.let { runCatching { DayNightMode.valueOf(it) }.getOrNull() } ?: defaults.dayNightMode,
+                keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
+                dayBrightness = (prefs[Keys.DAY_BRIGHTNESS] ?: defaults.dayBrightness).coerceIn(-1, 100),
+                nightBrightness = (prefs[Keys.NIGHT_BRIGHTNESS] ?: defaults.nightBrightness).coerceIn(-1, 100),
+                use24HourClock = prefs[Keys.USE_24_HOUR_CLOCK] ?: defaults.use24HourClock,
+                temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]?.let { name ->
+                    TemperatureUnit.entries.firstOrNull { it.name == name }
+                } ?: defaults.temperatureUnit,
+                tripHistory = prefs[Keys.TRIP_HISTORY]?.let { json ->
+                    runCatching {
+                        gson.fromJson<List<TripEntry>>(json, object : TypeToken<List<TripEntry>>() {}.type)
+                    }.getOrNull()
+                }.orEmpty(),
+                vehicleLog = prefs[Keys.VEHICLE_LOG]?.let { json ->
+                    runCatching {
+                        gson.fromJson<List<VehicleLogEntry>>(json, object : TypeToken<List<VehicleLogEntry>>() {}.type)
+                    }.getOrNull()
+                }.orEmpty(),
                 startupLogo      = prefs[Keys.STARTUP_LOGO] ?: defaults.startupLogo,
                 showSystemBars   = prefs[Keys.SHOW_SYSTEM_BARS] ?: defaults.showSystemBars,
                 showPip          = prefs[Keys.SHOW_PIP]         ?: defaults.showPip,
@@ -182,6 +206,13 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.SIDEBAR_POSITION]           = s.sidebarPosition.name
             prefs[Keys.BOTTOM_BAR_SHORTCUTS_RIGHT] = s.bottomBarShortcutsRight
             prefs[Keys.DAY_NIGHT_MODE]     = s.dayNightMode.name
+            prefs[Keys.KEEP_SCREEN_ON] = s.keepScreenOn
+            prefs[Keys.DAY_BRIGHTNESS] = s.dayBrightness
+            prefs[Keys.NIGHT_BRIGHTNESS] = s.nightBrightness
+            prefs[Keys.USE_24_HOUR_CLOCK] = s.use24HourClock
+            prefs[Keys.TEMPERATURE_UNIT] = s.temperatureUnit.name
+            prefs[Keys.TRIP_HISTORY] = gson.toJson(s.tripHistory)
+            prefs[Keys.VEHICLE_LOG] = gson.toJson(s.vehicleLog)
             prefs[Keys.STARTUP_LOGO] = s.startupLogo
             prefs[Keys.SHOW_SYSTEM_BARS] = s.showSystemBars
             prefs[Keys.SHOW_PIP]           = s.showPip

@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.toArgb
 
 enum class ClockStyle { DIGITAL, ANALOG }
 enum class UnitSystem { METRIC, IMPERIAL }
+enum class TemperatureUnit { FOLLOW_DISTANCE, CELSIUS, FAHRENHEIT }
 enum class AppFont { SYSTEM, JETBRAINS_MONO, SOURCE_CODE_PRO }
 enum class DayNightMode { DARK, LIGHT, AUTO, SYSTEM }
 enum class SidebarPosition { LEFT, RIGHT, BOTTOM }
@@ -105,7 +106,14 @@ data class AppSettings(
     val gradientDirection: GradientDirection = GradientDirection.DIAGONAL,
     val useCustomBackgroundColor: Boolean = false,
     val showSystemBars: Boolean = false,
-    val startupLogo: String = "car"
+    val startupLogo: String = "car",
+    val keepScreenOn: Boolean = false,
+    val dayBrightness: Int = -1,
+    val nightBrightness: Int = -1,
+    val use24HourClock: Boolean = true,
+    val vehicleLog: List<VehicleLogEntry> = emptyList(),
+    val temperatureUnit: TemperatureUnit = TemperatureUnit.FOLLOW_DISTANCE,
+    val tripHistory: List<TripEntry> = emptyList()
 )
 
 fun defaultShortcuts() = listOf(

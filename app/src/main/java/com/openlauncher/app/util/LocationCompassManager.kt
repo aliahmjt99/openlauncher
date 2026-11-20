@@ -20,7 +20,8 @@ data class LocationData(
     val longitude: Double,
     val altitude: Double,
     val accuracy: Float,
-    val speedMps: Float = 0f
+    val speedMps: Float = 0f,
+    val fixElapsedMs: Long = 0L
 )
 
 class LocationCompassManager(context: Context) {
@@ -73,7 +74,8 @@ class LocationCompassManager(context: Context) {
                 longitude = loc.longitude,
                 altitude  = loc.altitude,
                 accuracy  = loc.accuracy,
-                speedMps  = if (loc.hasSpeed()) loc.speed else 0f
+                speedMps  = if (loc.hasSpeed()) loc.speed else 0f,
+                fixElapsedMs = loc.elapsedRealtimeNanos / 1_000_000L
             )
 
             // 1. If GPS has a hardware-computed bearing, use it (works offline)

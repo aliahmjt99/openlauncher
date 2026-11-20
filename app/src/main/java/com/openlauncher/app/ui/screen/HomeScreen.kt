@@ -133,6 +133,7 @@ fun HomeScreen(
     onRadioSwitchAm: () -> Unit = {},
     onRadioTune: (band: String, freq: Float) -> Unit = { _, _ -> },
     onAssignRadio: () -> Unit = {},
+    onSaveTrip: (com.openlauncher.app.data.TripEntry) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val accent       = Color(settings.accentColor)
@@ -396,6 +397,7 @@ fun HomeScreen(
                     when (w.id) {
                         "CLOCK" -> ClockWidget(
                             style      = settings.clockStyle,
+                            use24HourClock = settings.use24HourClock,
                             accent     = accent,
                             isDayMode  = isDayMode,
                             modifier   = Modifier.fillMaxSize()
@@ -403,7 +405,12 @@ fun HomeScreen(
                         "WEATHER" -> WeatherWidget(
                             state      = weather,
                             accent     = accent,
-                            metric     = settings.unitSystem.name == "METRIC",
+                            metric     = when (settings.temperatureUnit) {
+                                com.openlauncher.app.data.TemperatureUnit.FOLLOW_DISTANCE ->
+                                    settings.unitSystem == com.openlauncher.app.data.UnitSystem.METRIC
+                                com.openlauncher.app.data.TemperatureUnit.CELSIUS -> true
+                                com.openlauncher.app.data.TemperatureUnit.FAHRENHEIT -> false
+                            },
                             isDayMode  = isDayMode,
                             modifier   = Modifier.fillMaxSize()
                         )
@@ -461,6 +468,7 @@ fun HomeScreen(
                         )
                         "TRIP_TRACKER" -> TripTrackerWidget(
                             location  = location,
+                            onSaveTrip = onSaveTrip,
                             isMetric  = settings.unitSystem == com.openlauncher.app.data.UnitSystem.METRIC,
                             accent    = accent,
                             isDayMode = isDayMode,
