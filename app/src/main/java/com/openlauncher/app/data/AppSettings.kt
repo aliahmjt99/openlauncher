@@ -114,7 +114,9 @@ data class AppSettings(
     val vehicleLog: List<VehicleLogEntry> = emptyList(),
     val temperatureUnit: TemperatureUnit = TemperatureUnit.FOLLOW_DISTANCE,
     val tripHistory: List<TripEntry> = emptyList(),
-    val phoneFavorites: List<PhoneFavorite> = emptyList()
+    val phoneFavorites: List<PhoneFavorite> = emptyList(),
+    val bluetoothPhonePackage: String = "",
+    val recentDialNumbers: List<String> = emptyList()
 )
 
 fun defaultShortcuts() = listOf(
