@@ -23,6 +23,7 @@ import coil.compose.AsyncImage
 import com.openlauncher.app.data.DayNightMode
 import com.openlauncher.app.data.SidebarPosition
 import com.openlauncher.app.data.GradientDirection
+import com.openlauncher.app.data.rememberDialNumber
 import com.openlauncher.app.model.NavDestination
 import com.openlauncher.app.ui.components.Sidebar
 import com.openlauncher.app.ui.components.StartupLogo
@@ -296,6 +297,26 @@ class MainActivity : ComponentActivity() {
 
                                     NavDestination.PHONE -> com.openlauncher.app.ui.screen.PhoneScreen(
                                         favorites = settings.phoneFavorites,
+                                        recentNumbers = settings.recentDialNumbers,
+                                        bluetoothPanel = {
+                                            com.openlauncher.app.ui.screen.BluetoothPhonePanel(
+                                                apps = apps,
+                                                selectedPackage = settings.bluetoothPhonePackage,
+                                                onSelect = { pkg ->
+                                                    vm.updateSettings { copy(bluetoothPhonePackage = pkg) }
+                                                },
+                                                onLaunch = vm::launchApp,
+                                                onReloadApps = vm::loadInstalledApps,
+                                                media = nowPlaying
+                                            )
+                                        },
+                                        bluetoothPhonePackage = settings.bluetoothPhonePackage,
+                                        onDial = { number ->
+                                            vm.updateSettings {
+                                                copy(recentDialNumbers = rememberDialNumber(recentDialNumbers, number))
+                                            }
+                                        },
+                                        onClearRecent = { vm.updateSettings { copy(recentDialNumbers = emptyList()) } },
                                         onSave = { favorite ->
                                             vm.updateSettings {
                                                 val updated = phoneFavorites.filterNot { it.number == favorite.number }

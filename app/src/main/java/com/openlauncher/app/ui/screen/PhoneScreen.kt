@@ -26,6 +26,11 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun PhoneScreen(
     favorites: List<PhoneFavorite>,
+    recentNumbers: List<String>,
+    bluetoothPanel: @Composable () -> Unit,
+    bluetoothPhonePackage: String,
+    onDial: (String) -> Unit,
+    onClearRecent: () -> Unit,
     onSave: (PhoneFavorite) -> Unit,
     onRemove: (PhoneFavorite) -> Unit,
     onBack: () -> Unit
@@ -36,6 +41,8 @@ internal fun PhoneScreen(
     var name by rememberSaveable { mutableStateOf("") }
     var search by rememberSaveable { mutableStateOf("") }
     var status by rememberSaveable { mutableStateOf<String?>(null) }
+    var tab by rememberSaveable { mutableStateOf("Favorites") }
+    var confirmClear by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<PhoneFavorite?>(null) }
 
     BackHandler(onBack = onBack)
@@ -68,8 +75,15 @@ internal fun PhoneScreen(
 
     fun dial(value: String) {
         status = try {
-            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", value, null)))
-            null
+            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", value, null))
+            val usedBluetoothApp = bluetoothPhonePackage.isNotBlank() && runCatching {
+                context.startActivity(Intent(dialIntent).setPackage(bluetoothPhonePackage))
+            }.isSuccess
+            if (!usedBluetoothApp) context.startActivity(dialIntent)
+            onDial(value)
+            if (bluetoothPhonePackage.isNotBlank() && !usedBluetoothApp) {
+                "Opened the Android dialer. The selected Bluetooth app does not accept dial requests."
+            } else null
         } catch (_: ActivityNotFoundException) {
             "No dialer is available. Use the head unit's phone app."
         } catch (_: SecurityException) {
@@ -102,35 +116,63 @@ internal fun PhoneScreen(
         }
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Favorites", style = MaterialTheme.typography.headlineSmall)
-            OutlinedButton(onClick = {
-                status = try {
-                    contactPicker.launch(Intent(Intent.ACTION_PICK).setType(Phone.CONTENT_TYPE))
-                    null
-                } catch (_: ActivityNotFoundException) {
-                    "No contact picker is available. Enter the number manually."
-                } catch (_: SecurityException) {
-                    "Android blocked the contact picker."
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (label in listOf("Favorites", "Recent", "Bluetooth")) {
+                    FilterChip(selected = tab == label, onClick = { tab = label }, label = { Text(label) })
                 }
-            }) { Text("Choose contact") }
-            OutlinedTextField(name, { name = it.take(80) }, label = { Text("Favorite name") }, singleLine = true)
-            val normalized = normalizeDialNumber(number)
-            OutlinedButton(enabled = normalized != null && name.isNotBlank(), onClick = {
-                normalized?.let { onSave(PhoneFavorite(name.trim(), it)); status = "Favorite saved." }
-            }) { Text("Save favorite") }
-            if (favorites.isNotEmpty()) {
-                OutlinedTextField(search, { search = it.take(80) }, label = { Text("Find a favorite") }, singleLine = true)
             }
-            for (favorite in favorites.filter { it.name.contains(search.trim(), true) || it.number.contains(search.trim()) }) {
-                Row {
-                    TextButton(onClick = { dial(favorite.number) }, modifier = Modifier.weight(1f)) {
-                        Text("${favorite.name} · ${favorite.number}")
+            when (tab) {
+                "Bluetooth" -> bluetoothPanel()
+                "Recent" -> {
+                    Text("Numbers opened from OpenLauncher. Call results are managed by your phone app.")
+                    if (recentNumbers.isEmpty()) Text("No recent numbers.")
+                    recentNumbers.forEach { recent ->
+                        TextButton(onClick = { dial(recent) }) { Text(recent) }
                     }
-                    TextButton(onClick = { removing = favorite }) { Text("Remove") }
+                    if (recentNumbers.isNotEmpty()) {
+                        TextButton(onClick = { confirmClear = true }) { Text("Clear recent numbers") }
+                    }
+                }
+                else -> {
+                    OutlinedButton(onClick = {
+                        status = try {
+                            contactPicker.launch(Intent(Intent.ACTION_PICK).setType(Phone.CONTENT_TYPE))
+                            null
+                        } catch (_: ActivityNotFoundException) {
+                            "No contact picker is available. Enter the number manually."
+                        } catch (_: SecurityException) {
+                            "Android blocked the contact picker."
+                        }
+                    }) { Text("Choose contact") }
+                    OutlinedTextField(name, { name = it.take(80) }, label = { Text("Favorite name") }, singleLine = true)
+                    val normalized = normalizeDialNumber(number)
+                    OutlinedButton(enabled = normalized != null && name.isNotBlank(), onClick = {
+                        normalized?.let { onSave(PhoneFavorite(name.trim(), it)); status = "Favorite saved." }
+                    }) { Text("Save favorite") }
+                    if (favorites.isNotEmpty()) {
+                        OutlinedTextField(search, { search = it.take(80) }, label = { Text("Find a favorite") }, singleLine = true)
+                    }
+                    for (favorite in favorites.filter { it.name.contains(search.trim(), true) || it.number.contains(search.trim()) }) {
+                        Row {
+                            TextButton(onClick = { dial(favorite.number) }, modifier = Modifier.weight(1f)) {
+                                Text("${favorite.name} · ${favorite.number}")
+                            }
+                            TextButton(onClick = { removing = favorite }) { Text("Remove") }
+                        }
+                    }
                 }
             }
             TextButton(onClick = onBack) { Text("Back to dashboard") }
         }
+    }
+
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("Clear recent numbers?") },
+            confirmButton = { TextButton(onClick = { onClearRecent(); confirmClear = false }) { Text("Clear") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } }
+        )
     }
 
     removing?.let { favorite ->

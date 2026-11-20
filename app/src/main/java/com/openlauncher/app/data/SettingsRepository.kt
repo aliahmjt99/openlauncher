@@ -51,6 +51,8 @@ class SettingsRepository(private val context: Context) {
         val NIGHT_BRIGHTNESS = intPreferencesKey("night_brightness")
         val USE_24_HOUR_CLOCK = booleanPreferencesKey("use_24_hour_clock")
         val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
+        val BLUETOOTH_PHONE_PACKAGE = stringPreferencesKey("bluetooth_phone_package")
+        val RECENT_DIAL_JSON = stringPreferencesKey("recent_dial_json")
         val PHONE_FAVORITES = stringPreferencesKey("phone_favorites")
         val TRIP_HISTORY = stringPreferencesKey("trip_history")
         val VEHICLE_LOG = stringPreferencesKey("vehicle_log")
@@ -135,6 +137,12 @@ class SettingsRepository(private val context: Context) {
                 temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]?.let { name ->
                     TemperatureUnit.entries.firstOrNull { it.name == name }
                 } ?: defaults.temperatureUnit,
+                bluetoothPhonePackage = prefs[Keys.BLUETOOTH_PHONE_PACKAGE].orEmpty(),
+                recentDialNumbers = prefs[Keys.RECENT_DIAL_JSON]?.let { json ->
+                    runCatching {
+                        gson.fromJson<List<String>>(json, object : TypeToken<List<String>>() {}.type)
+                    }.getOrNull()
+                }.orEmpty(),
                 phoneFavorites = prefs[Keys.PHONE_FAVORITES]?.let { json ->
                     runCatching {
                         gson.fromJson<List<PhoneFavorite>>(json, object : TypeToken<List<PhoneFavorite>>() {}.type)
@@ -217,6 +225,8 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.NIGHT_BRIGHTNESS] = s.nightBrightness
             prefs[Keys.USE_24_HOUR_CLOCK] = s.use24HourClock
             prefs[Keys.TEMPERATURE_UNIT] = s.temperatureUnit.name
+            prefs[Keys.BLUETOOTH_PHONE_PACKAGE] = s.bluetoothPhonePackage
+            prefs[Keys.RECENT_DIAL_JSON] = gson.toJson(s.recentDialNumbers)
             prefs[Keys.PHONE_FAVORITES] = gson.toJson(s.phoneFavorites)
             prefs[Keys.TRIP_HISTORY] = gson.toJson(s.tripHistory)
             prefs[Keys.VEHICLE_LOG] = gson.toJson(s.vehicleLog)
