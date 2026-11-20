@@ -202,6 +202,11 @@ class MainActivity : ComponentActivity() {
                                         val shortcut = settings.shortcuts[slot]
                                         if (shortcut.packageName.isNotEmpty()) {
                                             vm.launchApp(shortcut.packageName)
+                                        } else if (shortcut.isDefault &&
+                                            shortcut.defaultIcon == com.openlauncher.app.data.DefaultShortcutIcon.PHONE
+                                        ) {
+                                            vm.exitRearrangeMode()
+                                            vm.navigate(NavDestination.PHONE)
                                         }
                                     },
                                     onShortcutLongPress  = { slot -> vm.startShortcutPicker(slot) },
@@ -287,6 +292,20 @@ class MainActivity : ComponentActivity() {
                                         onAppClick          = { app -> vm.launchApp(app.packageName) },
                                         onPickerSelect      = { slot, app -> vm.assignShortcut(slot, app) },
                                         onCarPlaySelect     = { app -> vm.assignPickerApp(app) }
+                                    )
+
+                                    NavDestination.PHONE -> com.openlauncher.app.ui.screen.PhoneScreen(
+                                        favorites = settings.phoneFavorites,
+                                        onSave = { favorite ->
+                                            vm.updateSettings {
+                                                val updated = phoneFavorites.filterNot { it.number == favorite.number }
+                                                copy(phoneFavorites = listOf(favorite) + updated)
+                                            }
+                                        },
+                                        onRemove = { favorite ->
+                                            vm.updateSettings { copy(phoneFavorites = phoneFavorites - favorite) }
+                                        },
+                                        onBack = { vm.navigate(NavDestination.HOME) }
                                     )
 
                                     NavDestination.SETTINGS -> SettingsScreen(

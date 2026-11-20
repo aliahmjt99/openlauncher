@@ -38,6 +38,31 @@ jobs:
           name: Android-lint-report
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
+      - name: Check Android 9 and 32-bit ARM packaging
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          min_sdk=$(apkanalyzer manifest min-sdk "$apk")
+          if (( min_sdk > 28 )); then
+            echo "::error::APK requires API $min_sdk, above the Android 9 target."
+            exit 1
+          fi
+          python3 - "$apk" <<'PYTHON'
+          import sys
+          import zipfile
+
+          with zipfile.ZipFile(sys.argv[1]) as apk:
+              libraries = {
+                  tuple(path.split("/")[1:])
+                  for path in apk.namelist()
+                  if path.startswith("lib/") and path.endswith(".so")
+              }
+          all_names = {name for _, name in libraries}
+          arm32_names = {name for abi, name in libraries if abi == "armeabi-v7a"}
+          missing = sorted(all_names - arm32_names)
+          if missing:
+              sys.exit("Native libraries missing from armeabi-v7a: " + ", ".join(missing))
+          print(f"armeabi-v7a includes all {len(all_names)} packaged native libraries.")
+          PYTHON
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:

@@ -398,10 +398,12 @@ fun SettingsScreen(
 
         SettingsSection("Vehicle log") {
             VehicleLogSettings(settings.vehicleLog, onUpdate)
+            if (settings.vehicleLog.isNotEmpty()) LogExport("vehicle-log.csv") { vehicle(settings.vehicleLog) }
         }
 
         SettingsSection("Trip history") {
             TripHistory(settings.tripHistory, settings.unitSystem)
+            if (settings.tripHistory.isNotEmpty()) LogExport("trip-history.csv") { trips(settings.tripHistory) }
         }
 
         SettingsSection("Nearby places") {
