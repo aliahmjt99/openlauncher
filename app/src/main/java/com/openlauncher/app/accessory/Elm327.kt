@@ -1,6 +1,8 @@
 package com.openlauncher.app.accessory
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -28,14 +30,23 @@ internal object Elm327 {
             socket.soTimeout = 3_000
             val input = socket.getInputStream().buffered()
             val output = socket.getOutputStream()
-            val session = Session(input::read) { bytes -> output.write(bytes); output.flush() }
-            session.initialize()
-            while (true) {
-                emit(session.sample(includeCoolant = true))
-                delay(1_000)
-            }
+            poll(input::read, { bytes -> output.write(bytes); output.flush() }) { emit(it) }
         }
     }.flowOn(Dispatchers.IO)
+
+    suspend fun poll(
+        readByte: () -> Int,
+        write: (ByteArray) -> Unit,
+        onSample: suspend (ObdSnapshot) -> Unit
+    ) {
+        val session = Session(readByte, write)
+        session.initialize()
+        while (true) {
+            currentCoroutineContext().ensureActive()
+            onSample(session.sample(includeCoolant = true))
+            delay(1_000)
+        }
+    }
 
     private class Session(val readByte: () -> Int, val write: (ByteArray) -> Unit) {
         private fun query(command: String): String {
