@@ -51,6 +51,7 @@ class SettingsRepository(private val context: Context) {
         val NIGHT_BRIGHTNESS = intPreferencesKey("night_brightness")
         val USE_24_HOUR_CLOCK = booleanPreferencesKey("use_24_hour_clock")
         val TEMPERATURE_UNIT = stringPreferencesKey("temperature_unit")
+        val PHONE_FAVORITES = stringPreferencesKey("phone_favorites")
         val TRIP_HISTORY = stringPreferencesKey("trip_history")
         val VEHICLE_LOG = stringPreferencesKey("vehicle_log")
         val STARTUP_LOGO = stringPreferencesKey("startup_logo")
@@ -134,6 +135,11 @@ class SettingsRepository(private val context: Context) {
                 temperatureUnit = prefs[Keys.TEMPERATURE_UNIT]?.let { name ->
                     TemperatureUnit.entries.firstOrNull { it.name == name }
                 } ?: defaults.temperatureUnit,
+                phoneFavorites = prefs[Keys.PHONE_FAVORITES]?.let { json ->
+                    runCatching {
+                        gson.fromJson<List<PhoneFavorite>>(json, object : TypeToken<List<PhoneFavorite>>() {}.type)
+                    }.getOrNull()
+                }.orEmpty(),
                 tripHistory = prefs[Keys.TRIP_HISTORY]?.let { json ->
                     runCatching {
                         gson.fromJson<List<TripEntry>>(json, object : TypeToken<List<TripEntry>>() {}.type)
@@ -211,6 +217,7 @@ class SettingsRepository(private val context: Context) {
             prefs[Keys.NIGHT_BRIGHTNESS] = s.nightBrightness
             prefs[Keys.USE_24_HOUR_CLOCK] = s.use24HourClock
             prefs[Keys.TEMPERATURE_UNIT] = s.temperatureUnit.name
+            prefs[Keys.PHONE_FAVORITES] = gson.toJson(s.phoneFavorites)
             prefs[Keys.TRIP_HISTORY] = gson.toJson(s.tripHistory)
             prefs[Keys.VEHICLE_LOG] = gson.toJson(s.vehicleLog)
             prefs[Keys.STARTUP_LOGO] = s.startupLogo

@@ -113,7 +113,8 @@ data class AppSettings(
     val use24HourClock: Boolean = true,
     val vehicleLog: List<VehicleLogEntry> = emptyList(),
     val temperatureUnit: TemperatureUnit = TemperatureUnit.FOLLOW_DISTANCE,
-    val tripHistory: List<TripEntry> = emptyList()
+    val tripHistory: List<TripEntry> = emptyList(),
+    val phoneFavorites: List<PhoneFavorite> = emptyList()
 )
 
 fun defaultShortcuts() = listOf(

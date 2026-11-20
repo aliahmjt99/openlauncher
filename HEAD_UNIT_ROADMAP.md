@@ -69,15 +69,15 @@ References: [55 AA serial receiver](https://github.com/SamSkjord/TPMS), [USB ser
 
 ## Non-AI parity backlog
 
-This roadmap treats the requested features as requirements for OpenLauncher. Android 9/API 28 and 32-bit ARM support must be verified against the merged APK, SDK dependencies, and physical head unit.
+This roadmap treats the requested features as requirements for OpenLauncher. CI checks the merged APK minimum SDK and armeabi-v7a native library coverage. Android 9/API 28 runtime behavior still needs a physical head-unit test.
 
 | Area | Available or in this change | Remaining |
 | --- | --- | --- |
 | Display and layout | Left/right/bottom dock, landscape layout, widget editor, day/night themes, independent launcher-window brightness, keep-screen-on, 12/24-hour clock, independent weather temperature units, searchable app drawer | Multiple dashboard pages, Home button page cycling, driver profiles, translations, draggable return overlay, OEM-supported split screen, expanded widget catalog |
-| Vehicle costs and maintenance | Local fuel and EV charging costs with monthly totals, editable service history, in-app service countdowns | Export, scheduled reminders, distance-based intervals |
-| Trips and telemetry | GPS trip meter, manual local trip archive and 0–100 timer, ELM327 RPM/speed snapshots over Wi-Fi/USB/Bluetooth Classic, 55 AA serial TPMS sample | Live OBD/BLE dashboard, expanded optional PIDs, DTC read and user-confirmed parked clear, threshold alerts, gauge canvas, automatic trip recording, validated fuel economy and eco/emissions estimates, live TPMS and additional receiver profiles |
+| Vehicle costs and maintenance | Local fuel and EV charging costs with monthly totals, editable service history, in-app service countdowns and CSV export | scheduled reminders, distance-based intervals |
+| Trips and telemetry | GPS trip meter, manual local trip archive, trip CSV export and 0–100 timer, ELM327 RPM/speed snapshots over Wi-Fi/USB/Bluetooth Classic, 55 AA serial TPMS sample | Live OBD/BLE dashboard, expanded optional PIDs, DTC read and user-confirmed parked clear, threshold alerts, gauge canvas, automatic trip recording, validated fuel economy and eco/emissions estimates, live TPMS and additional receiver profiles |
 | Navigation | One-tap fuel, food, hotel, ATM and charging searches in an installed maps app | Embedded navigation, offline regional map downloads/search/routing, voice guidance, rerouting, 3D rendering, Google Navigation and live traffic, TomTom/Places data, speed limits and hazard data |
-| Media and utilities | MediaSession widget and existing FM integrations | Spotify library/search, track-reactive background, internet radio and favorites/history, phone keypad/contacts/favorites, lightweight browser, GPS weather refresh |
+| Media and utilities | MediaSession widget, existing FM integrations, phone keypad, Android contact picker and local phone favorites | Spotify library/search, track-reactive background, internet radio and favorites/history, lightweight browser, GPS weather refresh |
 | Camera and companion | Launch stock camera and projection apps from assigned shortcuts where exposed | Front-camera widget/PiP, verified UVC capture, recording and retention, experimental ADAS, supported ambient BLE profiles and theme sync, companion contacts/call history/battery/sharing |
 
 Prioritize offline launcher and accessory functionality on Android 9. Map and media providers need their own compatibility and credential review, especially where native libraries are involved. Measure recording, mapping and experimental ADAS under the head unit's 2 GB RAM budget before enabling them by default.
