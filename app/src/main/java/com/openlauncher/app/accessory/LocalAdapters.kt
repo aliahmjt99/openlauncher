@@ -88,11 +88,9 @@ internal fun monitorBluetoothObd(device: BluetoothDevice) = flow {
             watchdog.cancel(false)
             val input = socket.inputStream.buffered()
             val output = socket.outputStream
-            val job = currentCoroutineContext()
             Elm327.poll(
-                readByte = { job.ensureActive(); input.read() },
+                readByte = input::read,
                 write = {
-                    job.ensureActive()
                     watchdog.cancel(false)
                     watchdog = closeAfterTimeout()
                     output.write(it)

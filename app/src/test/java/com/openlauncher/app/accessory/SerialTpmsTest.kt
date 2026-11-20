@@ -39,4 +39,16 @@ class SerialTpmsTest {
         candidate.forEach { assertNull(decoder.accept(it)) }
         assertEquals(Wheel.REAR_LEFT, decoder.accept(0xFC)?.wheel)
     }
+    @Test
+    fun keepsNextFrameWhenATruncatedPacketConsumesItsHeader() {
+        val valid = intArrayOf(0x55, 0xAA, 8, 16, 75, 72, 0x18, 0xFC)
+        for (length in 3..7) {
+            val decoder = SerialTpms()
+            // Change the partial packet's wheel so its checksum cannot validate
+            // when the next frame's bytes fill the remaining positions.
+            val truncated = valid.copyOf(length).apply { if (length > 3) this[3] = 1 }
+            val output = (truncated + valid).mapNotNull { decoder.accept(it) }
+            assertEquals(listOf(Wheel.REAR_LEFT), output.map { it.wheel })
+        }
+    }
 }
