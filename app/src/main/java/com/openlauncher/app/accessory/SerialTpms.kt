@@ -47,3 +47,21 @@ internal class SerialTpms {
         return result
     }
 }
+
+internal data class TimedTireReading(val reading: TireReading, val ageSeconds: Long) {
+    val stale: Boolean get() = ageSeconds >= 300
+}
+
+internal class TireReadings {
+    private val latest = mutableMapOf<Wheel, Pair<TireReading, Long>>()
+
+    fun update(reading: TireReading, nowNanos: Long) {
+        latest[reading.wheel] = reading to nowNanos
+    }
+
+    fun at(nowNanos: Long): List<TimedTireReading> = Wheel.entries.mapNotNull { wheel ->
+        latest[wheel]?.let { (reading, lastSeen) ->
+            TimedTireReading(reading, (nowNanos - lastSeen).coerceAtLeast(0) / 1_000_000_000L)
+        }
+    }
+}

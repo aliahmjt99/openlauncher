@@ -9,3 +9,8 @@ internal fun normalizeDialNumber(value: String): String? {
             it.indexOf('+', 1) < 0 && it.any { ch -> ch in '0'..'9' }
     }
 }
+
+internal fun rememberDialNumber(previous: List<String>, value: String): List<String> {
+    val number = normalizeDialNumber(value) ?: return previous
+    return (listOf(number) + previous.filterNot { it == number }).take(20)
+}
