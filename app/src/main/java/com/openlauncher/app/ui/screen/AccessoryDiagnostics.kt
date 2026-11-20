@@ -83,7 +83,8 @@ internal fun AccessoryDiagnostics() {
             reading = "Connecting to the OBD-II adapter…"
             try {
                 Elm327.monitor(endpoint).collect { sample ->
-                    reading = sample.liveDisplay()
+                    val coolant = sample.coolantCelsius?.let { "$it °C" } ?: "unavailable"
+                    reading = "${sample.display()} · Coolant: $coolant"
                 }
             } catch (error: CancellationException) {
                 throw error
