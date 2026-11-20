@@ -6,6 +6,19 @@ import org.junit.Test
 
 class SerialTpmsTest {
     @Test
+    fun wheelAgesIndependentlyAndFreshPacketsReplaceStaleReadings() {
+        val readings = TireReadings()
+        val front = TireReading(Wheel.FRONT_LEFT, 225, 20, false, false, false)
+        val rear = front.copy(wheel = Wheel.REAR_RIGHT)
+        readings.update(front, 0L)
+        readings.update(rear, 299_000_000_000L)
+        assertEquals(listOf(true, false), readings.at(300_000_000_000L).map { it.stale })
+        val updated = front.copy(pressureKpa = 230)
+        readings.update(updated, 301_000_000_000L)
+        assertEquals(TimedTireReading(updated, 0), readings.at(301_000_000_000L).first())
+    }
+
+    @Test
     fun readsFragmentedRearLeftFrameAndFlags() {
         val decoder = SerialTpms()
         val frame = intArrayOf(0x55, 0xAA, 8, 16, 75, 72, 0x18, 0xFC)

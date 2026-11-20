@@ -90,3 +90,7 @@ Settings → Accessories → Start live readings polls Mode 01 RPM, speed and co
 From the dashboard's Phone shortcut, open Bluetooth to pair through Android Settings, inspect Android-visible paired devices, and select the firmware's phone app. Android headset/audio profile indicators cover the Android Bluetooth stack. A separate MCU may only expose its state and controls inside the OEM app. Dial requests use the selected app when it accepts the standard dial intent, then fall back to Android's dialer. The Recent tab tracks dialer handoffs, including cancelled dialer visits, with a clear action. It does not import completed or incoming calls.
 
 Use the OEM phone app to test inbound calls, answer/end, audio routing, phonebook sync and call history. Verify that its Bluetooth music session exposes usable controls to Android. Direct HFP-client calls, PBAP logs and phone battery readings require a documented firmware interface or a separate phone companion. Validate both Android-managed and MCU-managed pairing on the physical head unit.
+
+### Live 55 AA TPMS
+
+Select the USB serial receiver in Settings → Accessories and open Live 55 AA TPMS. The four main wheels show waiting, fresh, lost-signal or stale states. Spare readings appear if the receiver supplies them. Readings become stale after five minutes without a valid frame and the last displayed pressure is removed. Polling stops when the panel is backgrounded or closed. Physical testing must confirm the receiver profile, sensor cadence and pressure calibration.
