@@ -1,4 +1,4 @@
 <!-- Simple Icons, CC0 source: https://github.com/simple-icons/simple-icons/blob/32e030086fdc605196391aab28519b14dc4295b4/icons/renault.svg. Brand marks are trademarks of their owners. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="128dp" android:height="128dp" android:viewportWidth="24" android:viewportHeight="24">
-  <path android:fillColor="#FFFFFF" android:pathData="M17.463 11.99l-4.097-7.692-.924 1.707 3.213 5.985-5.483 10.283L4.69 11.99 11.096 0H9.27L2.882 11.99 9.269 24h1.807zm3.655 0L14.711 0h-1.807L6.517 11.99l4.117 7.712.904-1.707-3.193-6.005 5.463-10.263L19.29 11.99 12.904 24h1.807Z" android:fillType="nonZero" />
+  <path android:fillColor="#FFFFFF" android:pathData="M 17.463 11.99 l -4.097 -7.692 -.924 1.707 3.213 5.985 -5.483 10.283 L 4.69 11.99 11.096 0 H 9.27 L 2.882 11.99 9.269 24 h 1.807 z m 3.655 0 L 14.711 0 h -1.807 L 6.517 11.99 l 4.117 7.712 .904 -1.707 -3.193 -6.005 5.463 -10.263 L 19.29 11.99 12.904 24 h 1.807 Z" android:fillType="nonZero" />
 </vector>
