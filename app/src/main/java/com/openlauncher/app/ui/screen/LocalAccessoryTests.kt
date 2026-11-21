@@ -28,6 +28,7 @@ import com.openlauncher.app.accessory.TireReading
 import com.openlauncher.app.accessory.monitorBluetoothObd
 import com.openlauncher.app.accessory.monitorSerialTpms
 import com.openlauncher.app.accessory.monitorUsbObd
+import com.openlauncher.app.accessory.probeSerialTpms
 import com.openlauncher.app.accessory.readBluetoothObd
 import com.openlauncher.app.accessory.readSerialTpms
 import com.openlauncher.app.accessory.readUsbObd
@@ -66,6 +67,7 @@ internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) 
     var busy by remember { mutableStateOf(false) }
     val available = !sessions.obdRunning && !sessions.tiresRunning && !busy
     var profile by remember { mutableStateOf(SerialTpmsProfile.CLASSIC) }
+    var probeBaud by remember { mutableIntStateOf(19_200) }
     var baud by remember { mutableIntStateOf(38_400) }
     var drivers by remember { mutableStateOf(emptyList<UsbSerialDriver>()) }
     var paired by remember { mutableStateOf(emptyList<BluetoothDevice>()) }
@@ -97,7 +99,7 @@ internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) 
         }
     }
 
-    fun openSerial(driver: UsbSerialDriver, tpms: Boolean, live: Boolean = false) {
+    fun openSerial(driver: UsbSerialDriver, tpms: Boolean, live: Boolean = false, probe: Boolean = false) {
         val manager = usb ?: return
         if (!manager.hasPermission(driver.device)) {
             val action = "${context.packageName}.USB_ACCESSORY_PERMISSION"
@@ -112,7 +114,11 @@ internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) 
             }.getOrDefault("Could not request USB access. Reconnect the adapter and retry.")
             return
         }
-        val speed = if (tpms) 19_200 else baud
+        val speed = when {
+            probe -> probeBaud
+            tpms -> 19_200
+            else -> baud
+        }
         val selectedProfile = profile
         if (live) {
             report = null
@@ -122,7 +128,8 @@ internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) 
         }
         runTest {
             withUsbSerial(manager, driver, speed) { port ->
-                if (!tpms) readUsbObd(port).display()
+                if (probe) probeSerialTpms(port)
+                else if (!tpms) readUsbObd(port).display()
                 else {
                     val tires = readSerialTpms(port, selectedProfile)
                     if (tires.isEmpty()) "No 55 AA tire frames received. The receiver may use a different protocol."
@@ -175,6 +182,16 @@ internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) 
             }
         }
     }
+    if (drivers.isNotEmpty()) {
+        Text("E-ACE K25 / K25V1 protocol check")
+        Text("Listen for serial frames without sending commands. The check does not identify pressure calibration.")
+        Row {
+            for (rate in listOf(9_600, 19_200, 38_400, 115_200)) {
+                FilterChip(selected = probeBaud == rate, enabled = available, onClick = { probeBaud = rate },
+                    label = { Text(rate.toString()) })
+            }
+        }
+    }
     for (driver in drivers) {
         val device = driver.device
         Text(String.format(Locale.ROOT, "USB serial %04X:%04X", device.vendorId, device.productId))
@@ -193,6 +210,9 @@ internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) 
             OutlinedButton(enabled = available, onClick = { openSerial(driver, tpms = true, live = true) }) {
                 Text("Live TPMS")
             }
+        }
+        OutlinedButton(enabled = available, onClick = { openSerial(driver, tpms = true, probe = true) }) {
+            Text("Check K25 / K25V1")
         }
     }
     if (sessions.obdUsesLocalAdapter) {
