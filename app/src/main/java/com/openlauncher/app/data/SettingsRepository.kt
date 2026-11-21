@@ -97,8 +97,7 @@ class SettingsRepository(private val context: Context) {
                         object : TypeToken<List<WidgetConfig>>() {}.type
                     )
                 }.getOrNull() ?: defaults.widgetLayout
-                // Migrate: old 2×2 layout has no widget with gridX≥2 — replace with new 3×2 default
-                if (loaded.none { it.gridX >= 2 }) defaults.widgetLayout else loaded
+                loaded
             } else defaults.widgetLayout
 
             return AppSettings(

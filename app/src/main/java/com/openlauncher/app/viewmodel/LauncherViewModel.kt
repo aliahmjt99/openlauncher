@@ -22,6 +22,7 @@ import com.openlauncher.app.data.ShortcutConfig
 import com.openlauncher.app.data.SoundPadConfig
 import com.openlauncher.app.data.WeatherApi
 import com.openlauncher.app.data.activeWidgetIds
+import com.openlauncher.app.data.ACCESSORY_WIDGET_IDS
 import com.openlauncher.app.data.computeWidgetMove
 import com.openlauncher.app.data.defaultShortcuts
 import com.openlauncher.app.util.SunriseSunset
@@ -193,6 +194,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
     fun addWidget(id: String) {
         updateSettings {
             val activeIds = activeWidgetIds()
+            if (widgetLayout.any { it.id == id && it.enabled && it.id in activeIds }) return@updateSettings this
             var layout    = widgetLayout
             var cell      = freeCellIn(layout, activeIds)
 
@@ -254,6 +256,9 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
                 "VITALS"      -> copy(showVitals = false)
                 "TRIP_TRACKER" -> copy(showTripTracker = false)
                 "SOUNDBOARD"  -> copy(showSoundboard = false)
+                in ACCESSORY_WIDGET_IDS -> copy(widgetLayout = widgetLayout.map { widget ->
+                    if (widget.id == id) widget.copy(enabled = false) else widget
+                })
                 else          -> this
             }
         }

@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import kotlin.math.roundToInt
+import com.openlauncher.app.accessory.AccessorySessions
+import com.openlauncher.app.data.activeWidgetIds
 import com.openlauncher.app.data.AppSettings
 import com.openlauncher.app.data.ClockStyle
 import com.openlauncher.app.data.computeWidgetMove
@@ -64,21 +66,15 @@ private val ALL_WIDGET_TYPES = listOf(
     WidgetTypeInfo("SPEEDOMETER", "SPEED",       Icons.Default.Speed,         "GPS speed"),
     WidgetTypeInfo("VITALS",      "VITALS",      Icons.Default.Dns,           "Head Unit Health / Vitals"),
     WidgetTypeInfo("TRIP_TRACKER", "TRIP TRACKER", Icons.Default.Map,          "Trip logs & stats"),
-    WidgetTypeInfo("SOUNDBOARD",  "SOUNDBOARD",  Icons.Default.Piano,         "Custom sound pads")
+    WidgetTypeInfo("SOUNDBOARD",  "SOUNDBOARD",  Icons.Default.Piano,         "Custom sound pads"),
+    WidgetTypeInfo("TPMS", "TPMS", Icons.Default.TireRepair, "Live tire pressures"),
+    WidgetTypeInfo("OBD", "OBD-II", Icons.Default.Speed, "Live vehicle data"),
+    WidgetTypeInfo("LIVE_MAP", "LIVE MAP", Icons.Default.Map, "Current GPS position"),
+    WidgetTypeInfo("QUICK_TOOLS", "QUICK TOOLS", Icons.Default.Dashboard, "Phone and accessories")
 )
 
 private fun canAddWidget(settings: com.openlauncher.app.data.AppSettings): Boolean {
-    val visibleIds = buildSet {
-        if (settings.showClock) add("CLOCK")
-        if (settings.showWeather) add("WEATHER")
-        if (settings.showNowPlaying) add("NOW_PLAYING")
-        if (settings.showTelemetry) add("TELEMETRY")
-        if (settings.showAltimeter) add("ALTIMETER")
-        if (settings.showSpeedometer) add("SPEEDOMETER")
-        if (settings.showVitals) add("VITALS")
-        if (settings.showTripTracker) add("TRIP_TRACKER")
-        if (settings.showSoundboard) add("SOUNDBOARD")
-    }
+    val visibleIds = settings.activeWidgetIds()
     val activeWidgets = settings.widgetLayout.filter { it.enabled && it.id in visibleIds }
     val occupied = buildSet<Pair<Int, Int>> {
         activeWidgets.forEach { w ->
@@ -94,7 +90,7 @@ private fun canAddWidget(settings: com.openlauncher.app.data.AppSettings): Boole
 }
 
 @Composable
-fun HomeScreen(
+internal fun HomeScreen(
     settings: AppSettings,
     weather: WeatherState?,
     nowPlaying: NowPlayingState?,
@@ -103,6 +99,9 @@ fun HomeScreen(
     isWifi: Boolean,
     isData: Boolean,
     isDayMode: Boolean = false,
+    accessories: AccessorySessions,
+    onOpenAccessories: () -> Unit,
+    onOpenPhone: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
@@ -188,8 +187,7 @@ fun HomeScreen(
             }
             if (isLandscape) {
                 Spacer(Modifier.width(8.dp))
-                if (editMode) {
-                    IconButton(
+                IconButton(
                         onClick  = { widgetLibraryOpen = true },
                         modifier = Modifier.size(28.dp)
                     ) {
@@ -200,8 +198,7 @@ fun HomeScreen(
                             modifier           = Modifier.size(15.dp)
                         )
                     }
-                    Spacer(Modifier.width(2.dp))
-                }
+                Spacer(Modifier.width(2.dp))
                 IconButton(
                     onClick  = { editMode = !editMode },
                     modifier = Modifier.size(28.dp)
@@ -234,17 +231,7 @@ fun HomeScreen(
             // (LauncherViewModel.moveWidgetConfig) computes against settings flags
             // only, so dropping it here would make the drop ghost and the committed
             // layout disagree. With no data the cell renders fully transparent.
-            val visibleIds = buildSet {
-                if (settings.showClock) add("CLOCK")
-                if (settings.showWeather) add("WEATHER")
-                if (settings.showNowPlaying) add("NOW_PLAYING")
-                if (settings.showTelemetry) add("TELEMETRY")
-                if (settings.showAltimeter) add("ALTIMETER")
-                if (settings.showSpeedometer) add("SPEEDOMETER")
-                if (settings.showVitals) add("VITALS")
-                if (settings.showTripTracker) add("TRIP_TRACKER")
-                if (settings.showSoundboard) add("SOUNDBOARD")
-            }
+            val visibleIds = settings.activeWidgetIds()
 
             // Keep only visible widgets exactly as configured in settings, allowing explicit resizing to dictate layout
             val visible = settings.widgetLayout.filter { it.enabled && it.id in visibleIds }
@@ -473,6 +460,13 @@ fun HomeScreen(
                             accent    = accent,
                             isDayMode = isDayMode,
                             modifier  = Modifier.fillMaxSize()
+                        )
+                        "TPMS" -> TireDashboard(accessories, if (editMode) null else onOpenAccessories)
+                        "OBD" -> ObdDashboard(accessories, settings, if (editMode) null else onOpenAccessories)
+                        "LIVE_MAP" -> LiveMapWidget(location, controlsEnabled = !editMode)
+                        "QUICK_TOOLS" -> QuickToolsWidget(
+                            onPhone = if (editMode) null else onOpenPhone,
+                            onAccessories = if (editMode) null else onOpenAccessories
                         )
                         "SOUNDBOARD" -> SoundboardWidget(
                             pads      = settings.soundboardPads,
@@ -837,18 +831,11 @@ private fun WidgetLibraryDialog(
     val titleColor  = if (isDayMode) Color(0xFF495057) else Color(0xFF555555)
     val closeColor  = if (isDayMode) Color(0xFF495057) else Color(0xFF444444)
 
-    val activeIds = buildSet {
-        if (settings.showClock) add("CLOCK")
-        if (settings.showWeather) add("WEATHER")
-        if (settings.showNowPlaying) add("NOW_PLAYING")
-        if (settings.showTelemetry) add("TELEMETRY")
-        if (settings.showAltimeter) add("ALTIMETER")
-        if (settings.showSpeedometer) add("SPEEDOMETER")
-        if (settings.showVitals) add("VITALS")
-        if (settings.showTripTracker) add("TRIP_TRACKER")
-        if (settings.showSoundboard) add("SOUNDBOARD")
-    }
+    val activeIds = settings.activeWidgetIds()
     val canAdd = canAddWidget(settings)
+    var query by remember { mutableStateOf("") }
+    val shown = ALL_WIDGET_TYPES.filter { it.label.contains(query.trim(), true) ||
+        it.description.contains(query.trim(), true) }
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -875,13 +862,22 @@ private fun WidgetLibraryDialog(
                 }
             }
 
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                label = { Text("Find a widget") },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            )
+            if (shown.isEmpty()) Text("No matching widgets", style = MaterialTheme.typography.bodySmall)
             LazyVerticalGrid(
                 columns               = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement   = Arrangement.spacedBy(6.dp),
                 modifier              = Modifier.fillMaxWidth()
             ) {
-                items(ALL_WIDGET_TYPES) { info ->
+                items(shown, key = { it.id }) { info ->
                     val isActive = info.id in activeIds
                     WidgetLibraryCard(
                         info     = info,

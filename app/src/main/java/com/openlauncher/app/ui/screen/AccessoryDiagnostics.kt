@@ -4,18 +4,19 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.usb.UsbManager
 import android.os.Build
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.widthIn
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.background
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,8 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.openlauncher.app.accessory.AccessorySessions
 import com.openlauncher.app.accessory.Elm327
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,7 +37,27 @@ import java.net.InetSocketAddress
 import java.util.Locale
 
 @Composable
-internal fun AccessoryDiagnostics() {
+internal fun AccessoryScreen(sessions: AccessorySessions, onBack: () -> Unit) {
+    BackHandler(onBack = onBack)
+    Column(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TextButton(onClick = onBack) { Text("Dashboard") }
+            Text("Accessories", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 12.dp))
+        }
+        SettingsSection("Adapter connections") {
+            Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                ProvideTextStyle(MaterialTheme.typography.bodySmall) { AccessoryDiagnostics(sessions) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccessoryDiagnostics(sessions: AccessorySessions) {
     val context = LocalContext.current
     val usb = context.getSystemService(Context.USB_SERVICE) as? UsbManager
     val usbHost = context.packageManager.hasSystemFeature(PackageManager.FEATURE_USB_HOST)
@@ -61,8 +82,7 @@ internal fun AccessoryDiagnostics() {
     var port by remember { mutableStateOf("35000") }
     var reading by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var monitorAddress by remember { mutableStateOf<InetSocketAddress?>(null) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val wifiRunning = sessions.obdRunning && !sessions.obdUsesLocalAdapter
 
     fun address(): InetSocketAddress? {
         val octets = host.trim().split('.').map { it.toIntOrNull() }
@@ -77,45 +97,24 @@ internal fun AccessoryDiagnostics() {
         return InetSocketAddress(ip, tcpPort)
     }
 
-    LaunchedEffect(monitorAddress, lifecycle) {
-        val endpoint = monitorAddress ?: return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            reading = "Connecting to the OBD-II adapter…"
-            try {
-                Elm327.monitor(endpoint).collect { sample ->
-                    val coolant = sample.coolantCelsius?.let { "$it °C" } ?: "unavailable"
-                    reading = "${sample.display()} · Coolant: $coolant"
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: IOException) {
-                reading = "Live connection ended. Check the adapter, then start again."
-                monitorAddress = null
-            } catch (_: IllegalStateException) {
-                reading = "The adapter did not return a complete ELM327 response."
-                monitorAddress = null
-            }
-        }
-    }
-
     Text("Wi-Fi OBD-II")
     Text("Connect Android to the adapter’s Wi-Fi and use its IPv4 address and port. Test while parked.")
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
-            value = host, onValueChange = { host = it }, enabled = monitorAddress == null && !busy,
+            value = host, onValueChange = { host = it }, enabled = !sessions.obdRunning && !busy,
             label = { Text("Adapter IPv4") }, singleLine = true,
             modifier = Modifier.widthIn(max = 200.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
         )
         OutlinedTextField(
-            value = port, onValueChange = { port = it }, enabled = monitorAddress == null && !busy,
+            value = port, onValueChange = { port = it }, enabled = !sessions.obdRunning && !busy,
             label = { Text("Port") }, singleLine = true,
             modifier = Modifier.widthIn(max = 110.dp),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
         )
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(enabled = !busy && monitorAddress == null, onClick = {
+        OutlinedButton(enabled = !busy && !sessions.obdRunning, onClick = {
             val endpoint = address()
             if (endpoint != null) {
                 busy = true
@@ -138,16 +137,15 @@ internal fun AccessoryDiagnostics() {
         }) {
             Text(if (busy) "Reading adapter…" else "Read RPM and speed")
         }
-        OutlinedButton(enabled = !busy, onClick = {
-            if (monitorAddress == null) {
-                monitorAddress = address()
-                if (monitorAddress != null) reading = "Connecting to the OBD-II adapter…"
-            } else {
-                monitorAddress = null
-                reading = "Live session stopped."
+        OutlinedButton(enabled = !busy && !sessions.obdUsesLocalAdapter, onClick = {
+            if (wifiRunning) sessions.stopObd()
+            else address()?.let {
+                reading = null
+                sessions.startObd(Elm327.monitor(it), "Wi-Fi ELM327")
             }
-        }) { Text(if (monitorAddress == null) "Start live readings" else "Stop live readings") }
+        }) { Text(if (wifiRunning) "Stop live readings" else "Start live readings") }
     }
     reading?.let { Text(it) }
-    LocalAccessoryTests(usb)
+    if (!sessions.obdUsesLocalAdapter) Text(sessions.obd?.liveDisplay() ?: sessions.obdStatus)
+    LocalAccessoryTests(usb, sessions)
 }

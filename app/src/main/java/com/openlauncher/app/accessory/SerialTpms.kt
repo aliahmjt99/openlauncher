@@ -11,8 +11,13 @@ internal data class TireReading(
     val lowBattery: Boolean
 )
 
-/** Serial 55 AA state frames, documented by SamSkjord/TPMS. */
-internal class SerialTpms {
+internal enum class SerialTpmsProfile(val label: String) {
+    CLASSIC("55 AA Classic"),
+    DEELIFE("Deelife / MU7J")
+}
+
+/** Both profiles share the 55 AA framing, but use distinct pressure and status fields. */
+internal class SerialTpms(private val profile: SerialTpmsProfile = SerialTpmsProfile.CLASSIC) {
     private val frame = ArrayList<Int>(8)
 
     fun accept(byte: Int): TireReading? {
@@ -43,12 +48,19 @@ internal class SerialTpms {
             5 -> Wheel.SPARE
             else -> null
         }
-        val pressure = frame[4] * 344 / 100
+        val raw = frame[4]
+        val classicPressure = raw * 344 / 100
+        val pressure = when (profile) {
+            SerialTpmsProfile.CLASSIC -> classicPressure - if (classicPressure > 50) 20 else 0
+            SerialTpmsProfile.DEELIFE -> (raw * 345 + 50) / 100
+        }
+        val lowBatteryMask = if (profile == SerialTpmsProfile.DEELIFE) 0x01 else 0x10
         val flags = frame[6]
         val result = if (wheel != null) {
             TireReading(
-                wheel, pressure - if (pressure > 50) 20 else 0,
-                frame[5] - 50, flags and 0x20 != 0, flags and 0x08 != 0, flags and 0x10 != 0
+                wheel, pressure, frame[5] - 50,
+                profile == SerialTpmsProfile.CLASSIC && flags and 0x20 != 0,
+                flags and 0x08 != 0, flags and lowBatteryMask != 0
             )
         } else null
         frame.clear()

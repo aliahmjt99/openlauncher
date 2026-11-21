@@ -104,10 +104,12 @@ internal fun monitorBluetoothObd(device: BluetoothDevice) = flow {
     }
 }.flowOn(Dispatchers.IO)
 
-internal fun readSerialTpms(port: UsbSerialPort): List<TireReading> {
+internal fun readSerialTpms(port: UsbSerialPort, profile: SerialTpmsProfile): List<TireReading> {
     // Start the selected 55 AA receiver session with its documented heartbeat.
-    port.write(byteArrayOf(0x55, 0xAA.toByte(), 0x06, 0x19, 0, 0xE0.toByte()), 1_000)
-    val decoder = SerialTpms()
+    if (profile == SerialTpmsProfile.CLASSIC) {
+        port.write(byteArrayOf(0x55, 0xAA.toByte(), 0x06, 0x19, 0, 0xE0.toByte()), 1_000)
+    }
+    val decoder = SerialTpms(profile)
     val buffer = ByteArray(128)
     val wheels = linkedMapOf<Wheel, TireReading>()
     val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(12)
@@ -120,10 +122,12 @@ internal fun readSerialTpms(port: UsbSerialPort): List<TireReading> {
     return wheels.values.toList()
 }
 
-internal fun monitorSerialTpms(manager: UsbManager, driver: UsbSerialDriver) = flow {
+internal fun monitorSerialTpms(manager: UsbManager, driver: UsbSerialDriver, profile: SerialTpmsProfile) = flow {
     withUsbSerial(manager, driver, 19_200) { port ->
-        port.write(byteArrayOf(0x55, 0xAA.toByte(), 0x06, 0x19, 0, 0xE0.toByte()), 1_000)
-        val decoder = SerialTpms()
+        if (profile == SerialTpmsProfile.CLASSIC) {
+            port.write(byteArrayOf(0x55, 0xAA.toByte(), 0x06, 0x19, 0, 0xE0.toByte()), 1_000)
+        }
+        val decoder = SerialTpms(profile)
         val buffer = ByteArray(128)
         val latest = TireReadings()
         var lastEmission = System.nanoTime()
