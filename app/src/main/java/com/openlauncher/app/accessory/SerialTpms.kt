@@ -25,7 +25,16 @@ internal class SerialTpms {
         frame.add(byte)
         if (frame.size < 8) return null
 
-        val valid = frame.reduce(Int::xor) == 0
+        if (frame.reduce(Int::xor) != 0) {
+            // A truncated frame may have consumed the start of the next frame.
+            val nextHeader = (1 until frame.size).firstOrNull { index ->
+                frame[index] == 0x55 &&
+                    (index + 1 == frame.size || frame[index + 1] == 0xAA) &&
+                    (index + 2 >= frame.size || frame[index + 2] == 8)
+            } ?: frame.size
+            frame.subList(0, nextHeader).clear()
+            return null
+        }
         val wheel = when (frame[3]) {
             0 -> Wheel.FRONT_LEFT
             1 -> Wheel.FRONT_RIGHT
@@ -36,14 +45,13 @@ internal class SerialTpms {
         }
         val pressure = frame[4] * 344 / 100
         val flags = frame[6]
-        val result = if (valid && wheel != null) {
+        val result = if (wheel != null) {
             TireReading(
                 wheel, pressure - if (pressure > 50) 20 else 0,
                 frame[5] - 50, flags and 0x20 != 0, flags and 0x08 != 0, flags and 0x10 != 0
             )
         } else null
         frame.clear()
-        if (!valid && byte == 0x55) frame.add(byte)
         return result
     }
 }

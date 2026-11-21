@@ -39,11 +39,16 @@ internal object Elm327 {
         write: (ByteArray) -> Unit,
         onSample: suspend (ObdSnapshot) -> Unit
     ) {
-        val session = Session(readByte, write)
+        val context = currentCoroutineContext()
+        val session = Session(
+            readByte = { context.ensureActive(); readByte() },
+            write = { bytes -> context.ensureActive(); write(bytes) }
+        )
         session.initialize()
         while (true) {
-            currentCoroutineContext().ensureActive()
-            onSample(session.sample(includeCoolant = true))
+            val sample = session.sample(includeCoolant = true)
+            context.ensureActive()
+            onSample(sample)
             delay(1_000)
         }
     }
@@ -82,7 +87,8 @@ internal object Elm327 {
             .map { it.filterNot(Char::isWhitespace).uppercase() }
             .firstNotNullOfOrNull { line ->
                 if (line.startsWith(prefix) && line.length >= prefix.length + bytes * 2 &&
-                    line.all { it.isDigit() || it in 'A'..'F' }
+                    line.length % 2 == 0 &&
+                    line.all { it in '0'..'9' || it in 'A'..'F' }
                 ) {
                     line.substring(prefix.length, prefix.length + bytes * 2).toIntOrNull(16)
                 } else null

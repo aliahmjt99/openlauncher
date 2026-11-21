@@ -1,5 +1,8 @@
 package com.openlauncher.app.accessory
 
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -89,10 +92,34 @@ class Elm327Test {
     }
 
     @Test
+    fun cancelledMonitorDoesNotFinishInitializationOrEmitSamples() {
+        val commands = mutableListOf<String>()
+        var reads = 0
+        var samples = 0
+        runBlocking {
+            launch {
+                val context = currentCoroutineContext()
+                Elm327.poll(
+                    readByte = { reads++; '>'.code },
+                    write = {
+                        commands += String(it, Charsets.US_ASCII)
+                        context.cancel()
+                    },
+                    onSample = { samples++ }
+                )
+            }.join()
+        }
+        assertEquals(listOf("ATE0\r"), commands)
+        assertEquals(0, reads)
+        assertEquals(0, samples)
+    }
+
+    @Test
     fun rejectsMissingMalformedAndWrongPidReplies() {
         assertNull(Elm327.parseReading("NO DATA\r", "0C", 2))
         assertNull(Elm327.parseReading("41 0C 2E\r", "0C", 2))
         assertNull(Elm327.parseReading("41 0C ZZ 00\r", "0C", 2))
         assertNull(Elm327.parseReading("41 0D 58\r", "0C", 2))
+        assertNull(Elm327.parseReading("41 0D 58 F", "0D", 1))
     }
 }
