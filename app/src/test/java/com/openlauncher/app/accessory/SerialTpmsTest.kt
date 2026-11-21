@@ -6,6 +6,17 @@ import org.junit.Test
 
 class SerialTpmsTest {
     @Test
+    fun deelifeUsesItsOwnPressureCalibrationAndBatteryFlag() {
+        val frame = intArrayOf(0x55, 0xAA, 8, 1, 0x47, 0x47, 1, 0xF7)
+        val deelife = SerialTpms(SerialTpmsProfile.DEELIFE)
+        val classic = SerialTpms(SerialTpmsProfile.CLASSIC)
+        assertEquals(TireReading(Wheel.FRONT_RIGHT, 245, 21, false, false, true),
+            frame.asSequence().mapNotNull(deelife::accept).single())
+        assertEquals(TireReading(Wheel.FRONT_RIGHT, 224, 21, false, false, false),
+            frame.asSequence().mapNotNull(classic::accept).single())
+    }
+
+    @Test
     fun wheelAgesIndependentlyAndFreshPacketsReplaceStaleReadings() {
         val readings = TireReadings()
         val front = TireReading(Wheel.FRONT_LEFT, 225, 20, false, false, false)

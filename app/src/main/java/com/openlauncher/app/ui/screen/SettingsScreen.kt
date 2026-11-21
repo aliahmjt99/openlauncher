@@ -47,6 +47,7 @@ fun SettingsScreen(
     accent: Color,
     onUpdate: (AppSettings.() -> AppSettings) -> Unit,
     onReset: () -> Unit,
+    onOpenAccessories: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -417,7 +418,13 @@ fun SettingsScreen(
         }
 
         SettingsSection("Accessories") {
-            AccessoryDiagnostics()
+            SettingsButton(
+                label = "OBD-II and TPMS",
+                sublabel = "Connect adapters and view live readings",
+                icon = Icons.Default.Settings,
+                accent = accent,
+                onClick = onOpenAccessories
+            )
         }
 
         SettingsSection("Appearance") {
@@ -894,7 +901,7 @@ fun SettingsScreen(
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun SettingsSection(
+internal fun SettingsSection(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {

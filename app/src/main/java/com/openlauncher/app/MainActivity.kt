@@ -20,6 +20,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.openlauncher.app.accessory.AccessorySessions
 import com.openlauncher.app.data.DayNightMode
 import com.openlauncher.app.data.SidebarPosition
 import com.openlauncher.app.data.GradientDirection
@@ -67,6 +70,13 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         setContent {
+            val accessories = remember { AccessorySessions() }
+            LaunchedEffect(accessories.obdKey) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { accessories.observeObd() }
+            }
+            LaunchedEffect(accessories.tireKey) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { accessories.observeTires() }
+            }
             val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
             val settings       by vm.settings.collectAsStateWithLifecycle()
             LaunchedEffect(settingsLoaded, settings.showSystemBars) {
@@ -239,6 +249,9 @@ class MainActivity : ComponentActivity() {
                                         isWifi              = isWifi,
                                         isData              = isData,
                                         isDayMode           = isDayMode,
+                                        accessories         = accessories,
+                                        onOpenAccessories   = { vm.navigate(NavDestination.ACCESSORIES) },
+                                        onOpenPhone         = { vm.navigate(NavDestination.PHONE) },
                                         onPlayPause         = vm::playPause,
                                         onNext              = vm::skipNext,
                                         onPrev              = vm::skipPrev,
@@ -329,11 +342,14 @@ class MainActivity : ComponentActivity() {
                                         onBack = { vm.navigate(NavDestination.HOME) }
                                     )
 
+                                    NavDestination.ACCESSORIES -> AccessoryScreen(accessories) { vm.navigate(NavDestination.HOME) }
+
                                     NavDestination.SETTINGS -> SettingsScreen(
                                         settings = settings,
                                         accent   = accent,
                                         onUpdate = { block -> vm.updateSettings(block) },
-                                        onReset  = { vm.resetSettings() }
+                                        onReset  = { vm.resetSettings() },
+                                        onOpenAccessories = { vm.navigate(NavDestination.ACCESSORIES) }
                                     )
                                 }
                             }

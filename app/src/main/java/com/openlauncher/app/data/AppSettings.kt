@@ -133,6 +133,8 @@ fun defaultWidgetLayout() = listOf(
     WidgetConfig("NOW_PLAYING", gridX = 0, gridY = 1, spanX = 2, spanY = 1)
 )
 
+internal val ACCESSORY_WIDGET_IDS = setOf("TPMS", "OBD", "LIVE_MAP", "QUICK_TOOLS")
+
 fun AppSettings.activeWidgetIds(): Set<String> = buildSet {
     if (showClock) add("CLOCK")
     if (showWeather) add("WEATHER")
@@ -143,6 +145,7 @@ fun AppSettings.activeWidgetIds(): Set<String> = buildSet {
     if (showVitals) add("VITALS")
     if (showTripTracker) add("TRIP_TRACKER")
     if (showSoundboard) add("SOUNDBOARD")
+    widgetLayout.filter { it.enabled && it.id in ACCESSORY_WIDGET_IDS }.forEach { add(it.id) }
 }
 
 /**

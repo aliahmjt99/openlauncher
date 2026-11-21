@@ -19,14 +19,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialProber
+import com.openlauncher.app.accessory.AccessorySessions
+import com.openlauncher.app.accessory.SerialTpmsProfile
 import com.openlauncher.app.accessory.ObdSnapshot
 import com.openlauncher.app.accessory.TireReading
-import com.openlauncher.app.accessory.Wheel
 import com.openlauncher.app.accessory.monitorBluetoothObd
 import com.openlauncher.app.accessory.monitorSerialTpms
 import com.openlauncher.app.accessory.monitorUsbObd
@@ -36,8 +34,6 @@ import com.openlauncher.app.accessory.readUsbObd
 import com.openlauncher.app.accessory.withUsbSerial
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -63,28 +59,13 @@ private fun TireReading.display(): String {
 
 @SuppressLint("MissingPermission")
 @Composable
-internal fun LocalAccessoryTests(usb: UsbManager?) {
+internal fun LocalAccessoryTests(usb: UsbManager?, sessions: AccessorySessions) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var report by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var liveReadings by remember { mutableStateOf<Flow<String>?>(null) }
-    val available = liveReadings == null && !busy
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(liveReadings, lifecycle) {
-        val session = liveReadings ?: return@LaunchedEffect
-        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            report = "Waiting for data from the selected adapter…"
-            try {
-                session.collect { report = it }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (_: Exception) {
-                liveReadings = null
-                report = "Live session ended. Check the adapter connection or permissions and retry."
-            }
-        }
-    }
+    val available = !sessions.obdRunning && !sessions.tiresRunning && !busy
+    var profile by remember { mutableStateOf(SerialTpmsProfile.CLASSIC) }
     var baud by remember { mutableIntStateOf(38_400) }
     var drivers by remember { mutableStateOf(emptyList<UsbSerialDriver>()) }
     var paired by remember { mutableStateOf(emptyList<BluetoothDevice>()) }
@@ -132,28 +113,18 @@ internal fun LocalAccessoryTests(usb: UsbManager?) {
             return
         }
         val speed = if (tpms) 19_200 else baud
+        val selectedProfile = profile
         if (live) {
-            liveReadings = if (tpms) {
-                monitorSerialTpms(manager, driver).map { tires ->
-                    val byWheel = tires.associateBy { it.reading.wheel }
-                    Wheel.entries.filter { it != Wheel.SPARE || it in byWheel }.joinToString("\n") { wheel ->
-                        val name = wheel.name.lowercase().replace('_', ' ')
-                        val tire = byWheel[wheel]
-                        when {
-                            tire == null -> "$name · waiting for sensor"
-                            tire.stale -> "$name · reading stale · ${tire.ageSeconds}s ago"
-                            else -> "${tire.reading.display()} · ${tire.ageSeconds}s ago"
-                        }
-                    }
-                }
-            } else monitorUsbObd(manager, driver, speed).map { it.liveDisplay() }
+            report = null
+            if (tpms) sessions.startTires(monitorSerialTpms(manager, driver, selectedProfile), selectedProfile.label)
+            else sessions.startObd(monitorUsbObd(manager, driver, speed), "USB ELM327")
             return
         }
         runTest {
             withUsbSerial(manager, driver, speed) { port ->
                 if (!tpms) readUsbObd(port).display()
                 else {
-                    val tires = readSerialTpms(port)
+                    val tires = readSerialTpms(port, selectedProfile)
                     if (tires.isEmpty()) "No 55 AA tire frames received. The receiver may use a different protocol."
                     else tires.joinToString("\n") { it.display() }
                 }
@@ -176,8 +147,9 @@ internal fun LocalAccessoryTests(usb: UsbManager?) {
             OutlinedButton(enabled = available, onClick = {
                 runTest { readBluetoothObd(device).display() }
             }) { Text("Test · $label") }
-            OutlinedButton(enabled = available, onClick = {
-                liveReadings = monitorBluetoothObd(device).map { it.liveDisplay() }
+            OutlinedButton(enabled = !sessions.obdRunning && !busy, onClick = {
+                report = null
+                sessions.startObd(monitorBluetoothObd(device), "Bluetooth ELM327 · $label")
             }) { Text("Live ELM327 · $label") }
         }
     }
@@ -188,6 +160,13 @@ internal fun LocalAccessoryTests(usb: UsbManager?) {
         report = if (drivers.isEmpty()) "No supported USB serial adapter detected." else null
     }) { Text("Find USB serial adapters") }
     if (drivers.isNotEmpty()) {
+        Text("USB TPMS protocol")
+        Row {
+            for (option in SerialTpmsProfile.entries) {
+                FilterChip(selected = profile == option, enabled = available, onClick = { profile = option },
+                    label = { Text(option.label) })
+            }
+        }
         Text("USB OBD-II baud rate")
         Row {
             for (rate in listOf(9_600, 38_400, 115_200)) {
@@ -204,7 +183,7 @@ internal fun LocalAccessoryTests(usb: UsbManager?) {
                 Text("Test USB ELM327")
             }
             OutlinedButton(enabled = available, onClick = { openSerial(driver, tpms = true) }) {
-                Text("Sample 55 AA TPMS")
+                Text("Sample TPMS")
             }
         }
         Row {
@@ -212,15 +191,22 @@ internal fun LocalAccessoryTests(usb: UsbManager?) {
                 Text("Live USB ELM327")
             }
             OutlinedButton(enabled = available, onClick = { openSerial(driver, tpms = true, live = true) }) {
-                Text("Live 55 AA TPMS")
+                Text("Live TPMS")
             }
         }
     }
-    if (liveReadings != null) {
-        OutlinedButton(onClick = {
-            liveReadings = null
-            report = "Live session stopped."
-        }) { Text("Stop accessory session") }
+    if (sessions.obdUsesLocalAdapter) {
+        Text(sessions.obd?.liveDisplay() ?: sessions.obdStatus)
+        OutlinedButton(onClick = sessions::stopObd) { Text("Stop OBD-II") }
+    }
+    if (sessions.tiresRunning) {
+        Text(sessions.tireStatus)
+        for (tire in sessions.tires) {
+            val name = tire.reading.wheel.name.lowercase().replace('_', ' ')
+            Text(if (tire.stale) "$name · stale · ${tire.ageSeconds}s ago"
+                else "${tire.reading.display()} · ${tire.ageSeconds}s ago")
+        }
+        OutlinedButton(onClick = sessions::stopTires) { Text("Stop TPMS") }
     }
     if (busy) Text("Reading adapter…")
     report?.let { Text(it) }
