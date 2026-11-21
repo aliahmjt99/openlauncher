@@ -24,7 +24,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build APK, run unit tests, and lint
         run: |
-          if ! ./gradlew --no-daemon testDebugUnitTest assembleDebug lintDebug; then
+          if ! ./gradlew --no-daemon testDebugUnitTest assembleDebug assemblePreview lintDebug; then
             report=app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
             if [[ -f "$report" ]]; then
               awk '/: Error:/{print; for (i=0; i<2 && getline; i++) print}' "$report"
@@ -40,34 +40,48 @@ jobs:
           if-no-files-found: ignore
       - name: Check Android 9 and 32-bit ARM packaging
         run: |
-          apk=app/build/outputs/apk/debug/app-debug.apk
-          min_sdk=$(apkanalyzer manifest min-sdk "$apk")
-          if (( min_sdk > 28 )); then
-            echo "::error::APK requires API $min_sdk, above the Android 9 target."
-            exit 1
-          fi
-          python3 - "$apk" <<'PYTHON'
+          debug=app/build/outputs/apk/debug/app-debug.apk
+          preview=app/build/outputs/apk/preview/app-preview.apk
+          for apk in "$debug" "$preview"; do
+            min_sdk=$(apkanalyzer manifest min-sdk "$apk")
+            if (( min_sdk > 28 )); then
+              echo "::error::APK requires API $min_sdk, above the Android 9 target."
+              exit 1
+            fi
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --min-sdk-version 28 "$apk"
+          done
+          test "$(apkanalyzer manifest application-id "$debug")" = com.openlauncher.app
+          test "$(apkanalyzer manifest application-id "$preview")" = com.openlauncher.app.preview
+          python3 - "$debug" "$preview" <<'PYTHON'
           import sys
           import zipfile
 
-          with zipfile.ZipFile(sys.argv[1]) as apk:
-              libraries = {
-                  tuple(path.split("/")[1:])
-                  for path in apk.namelist()
-                  if path.startswith("lib/") and path.endswith(".so")
-              }
-          all_names = {name for _, name in libraries}
-          arm32_names = {name for abi, name in libraries if abi == "armeabi-v7a"}
-          missing = sorted(all_names - arm32_names)
-          if missing:
-              sys.exit("Native libraries missing from armeabi-v7a: " + ", ".join(missing))
-          print(f"armeabi-v7a includes all {len(all_names)} packaged native libraries.")
+          for path in sys.argv[1:]:
+              with zipfile.ZipFile(path) as apk:
+                  libraries = {
+                      tuple(entry.split("/")[1:])
+                      for entry in apk.namelist()
+                      if entry.startswith("lib/") and entry.endswith(".so")
+                  }
+              all_names = {name for _, name in libraries}
+              arm32_names = {name for abi, name in libraries if abi == "armeabi-v7a"}
+              missing = sorted(all_names - arm32_names)
+              if missing:
+                  sys.exit(f"{path}: Native libraries missing from armeabi-v7a: " + ", ".join(missing))
+              print(f"{path}: armeabi-v7a includes all {len(all_names)} packaged native libraries.")
           PYTHON
       - name: Upload installable debug APK
         uses: actions/upload-artifact@v4
         with:
           name: OpenLauncher-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload side-by-side preview APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenLauncher-preview
+          path: app/build/outputs/apk/preview/app-preview.apk
           if-no-files-found: error
 
   release:

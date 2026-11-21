@@ -11,6 +11,7 @@ android {
 
     defaultConfig {
         applicationId  = "com.openlauncher.app"
+        manifestPlaceholders["launcherLabel"] = "Open Launcher"
         minSdk         = 21
         targetSdk      = 36
         versionCode    = 6
@@ -20,6 +21,12 @@ android {
     buildTypes {
         debug {
             // Default signing config for normal device testing (restores app visibility)
+        }
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            matchingFallbacks += "debug"
+            manifestPlaceholders["launcherLabel"] = "Open Launcher Preview"
         }
         release {
             isMinifyEnabled = false
