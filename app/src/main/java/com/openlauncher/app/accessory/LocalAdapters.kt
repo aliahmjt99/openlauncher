@@ -122,6 +122,26 @@ internal fun readSerialTpms(port: UsbSerialPort, profile: SerialTpmsProfile): Li
     return wheels.values.toList()
 }
 
+internal fun probeSerialTpms(port: UsbSerialPort): String {
+    val decoder = SerialTpms()
+    val buffer = ByteArray(128)
+    var bytes = 0
+    var frames = 0
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(8)
+    while (System.nanoTime() < deadline) {
+        val count = port.read(buffer, 500)
+        bytes += count.coerceAtLeast(0)
+        for (index in 0 until count) {
+            if (decoder.accept(buffer[index].toInt() and 0xFF) != null) frames++
+        }
+    }
+    return when {
+        frames > 0 -> "$frames valid 55 AA wheel frames received. Compare readings in the vendor app before choosing a pressure profile."
+        bytes > 0 -> "$bytes serial bytes received, with no valid 55 AA wheel frames. Try another baud rate."
+        else -> "No serial data received. The receiver may require a different baud rate or an initialization command."
+    }
+}
+
 internal fun monitorSerialTpms(manager: UsbManager, driver: UsbSerialDriver, profile: SerialTpmsProfile) = flow {
     withUsbSerial(manager, driver, 19_200) { port ->
         if (profile == SerialTpmsProfile.CLASSIC) {

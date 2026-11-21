@@ -1,10 +1,8 @@
 package com.openlauncher.app
 
-import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -30,6 +28,7 @@ import com.openlauncher.app.data.rememberDialNumber
 import com.openlauncher.app.model.NavDestination
 import com.openlauncher.app.ui.components.Sidebar
 import com.openlauncher.app.ui.components.StartupLogo
+import com.openlauncher.app.ui.components.StartupPermissionPrompt
 import kotlinx.coroutines.delay
 import com.openlauncher.app.ui.screen.*
 import com.openlauncher.app.ui.theme.OpenLauncherTheme
@@ -38,15 +37,6 @@ import com.openlauncher.app.viewmodel.LauncherViewModel
 class MainActivity : ComponentActivity() {
 
     private val vm: LauncherViewModel by viewModels()
-
-    private val locationPermissions = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { granted ->
-        if (granted[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-            granted[Manifest.permission.ACCESS_COARSE_LOCATION] == true) {
-            vm.startLocationUpdates()
-        }
-    }
 
     private fun applySystemBars(visible: Boolean) {
         WindowCompat.getInsetsController(window, window.decorView).apply {
@@ -172,6 +162,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
                 } else {
+                    StartupPermissionPrompt(onLocationGranted = vm::startLocationUpdates)
                     Box(modifier = Modifier.fillMaxSize().let { m ->
                         if (bgBrush != null) m.background(bgBrush) else m.background(bg)
                     }) {

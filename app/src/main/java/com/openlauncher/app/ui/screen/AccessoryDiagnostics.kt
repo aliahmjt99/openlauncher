@@ -68,8 +68,12 @@ private fun AccessoryDiagnostics(sessions: AccessorySessions) {
     OutlinedButton(onClick = {
         usbReport = runCatching {
             usb?.deviceList?.values?.sortedBy { it.deviceId }?.joinToString("\n") { device ->
-                String.format(Locale.ROOT, "%04X:%04X · %d interfaces",
-                    device.vendorId, device.productId, device.interfaceCount)
+                val interfaces = (0 until device.interfaceCount).joinToString(", ") { index ->
+                    val usbInterface = device.getInterface(index)
+                    "${usbInterface.interfaceClass}/${usbInterface.interfaceSubclass}/${usbInterface.interfaceProtocol}"
+                }
+                String.format(Locale.ROOT, "%04X:%04X · interface class/subclass/protocol: %s",
+                    device.vendorId, device.productId, interfaces.ifBlank { "none" })
             }?.ifBlank { "No USB accessories detected" } ?: "USB service unavailable"
         }.getOrDefault("Could not enumerate USB accessories")
     }) {

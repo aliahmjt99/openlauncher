@@ -16,10 +16,40 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.openlauncher.app.R
 
+internal data class VehicleBrandLogo(val id: String, val label: String, val drawable: Int)
+
+internal val vehicleBrandLogos = listOf(
+    VehicleBrandLogo("brand:hyundai", "Hyundai", R.drawable.brand_hyundai),
+    VehicleBrandLogo("brand:toyota", "Toyota", R.drawable.brand_toyota),
+    VehicleBrandLogo("brand:kia", "Kia", R.drawable.brand_kia),
+    VehicleBrandLogo("brand:nissan", "Nissan", R.drawable.brand_nissan),
+    VehicleBrandLogo("brand:honda", "Honda", R.drawable.brand_honda),
+    VehicleBrandLogo("brand:ford", "Ford", R.drawable.brand_ford),
+    VehicleBrandLogo("brand:chevrolet", "Chevrolet", R.drawable.brand_chevrolet),
+    VehicleBrandLogo("brand:volkswagen", "Volkswagen", R.drawable.brand_volkswagen),
+    VehicleBrandLogo("brand:mazda", "Mazda", R.drawable.brand_mazda),
+    VehicleBrandLogo("brand:mitsubishi", "Mitsubishi", R.drawable.brand_mitsubishi),
+    VehicleBrandLogo("brand:bmw", "BMW", R.drawable.brand_bmw),
+    VehicleBrandLogo("brand:suzuki", "Suzuki", R.drawable.brand_suzuki),
+    VehicleBrandLogo("brand:jeep", "Jeep", R.drawable.brand_jeep),
+    VehicleBrandLogo("brand:audi", "Audi", R.drawable.brand_audi),
+    VehicleBrandLogo("brand:peugeot", "Peugeot", R.drawable.brand_peugeot),
+    VehicleBrandLogo("brand:renault", "Renault", R.drawable.brand_renault),
+)
+
 @Composable
 fun StartupLogo(logo: String, modifier: Modifier = Modifier) {
     Box(modifier.background(Color.Black), contentAlignment = Alignment.Center) {
         val car = painterResource(R.mipmap.ic_launcher)
+        val brand = vehicleBrandLogos.firstOrNull { it.id == logo }
+        if (brand != null) {
+            Image(
+                painter = painterResource(brand.drawable),
+                contentDescription = brand.label,
+                modifier = Modifier.size(128.dp)
+            )
+            return@Box
+        }
         when (logo) {
             "none" -> Unit
             "car" -> Image(
